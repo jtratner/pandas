@@ -4,7 +4,7 @@ import functools
 
 import numpy as np
 
-from pandas.core.common import isnull, notnull
+from pandas.core.common import isnull, notnull, _values_from_object
 import pandas.core.common as com
 import pandas.lib as lib
 import pandas.algos as algos
@@ -126,6 +126,7 @@ def _get_values(values, skipna, fill_value=None, fill_value_typ=None, isfinite=F
     """ utility to get the values view, mask, dtype
         if necessary copy and mask using the specified fill_value
         copy = True will force the copy """
+    values = _values_from_object(values)
     if isfinite:
         mask = _isfinite(values)
     else:
@@ -227,7 +228,7 @@ def nanmedian(values, axis=None, skipna=True):
         mask = notnull(x)
         if not skipna and not mask.all():
             return np.nan
-        return algos.median(x[mask])
+        return algos.median(_values_from_object(x[mask]))
 
     if values.dtype != np.float64:
         values = values.astype('f8')

@@ -6,7 +6,8 @@ from datetime import timedelta
 
 import numpy as np
 
-from pandas.core.common import isnull, _NS_DTYPE, _INT64_DTYPE
+from pandas.core.common import (isnull, _NS_DTYPE, _INT64_DTYPE,
+                                _values_from_object, _maybe_box)
 from pandas.core.index import Index, Int64Index
 from pandas.tseries.frequencies import (
     infer_freq, to_offset, get_period_alias,
@@ -514,6 +515,8 @@ class DatetimeIndex(Int64Index):
         summary += tagline % (len(self), freq, self.tz)
 
         return summary
+
+    __str__ = __repr__
 
     def __reduce__(self):
         """Necessary for making this object picklable"""
@@ -1149,12 +1152,10 @@ class DatetimeIndex(Int64Index):
         know what you're doing
         """
         if isinstance(key, datetime):
-            # needed to localize naive datetimes
-            stamp = Timestamp(key, tz=self.tz)
-            return self._engine.get_value(series, stamp)
+            return self.get_value_maybe_box(series, key)
 
         try:
-            return Index.get_value(self, series, key)
+            return _maybe_box(self, Index.get_value(self, series, key), series, key)
         except KeyError:
             try:
                 loc = self._get_string_slice(key)
@@ -1167,10 +1168,18 @@ class DatetimeIndex(Int64Index):
                 return series.take(locs)
 
             try:
-                stamp = Timestamp(key, tz=self.tz)
-                return self._engine.get_value(series, stamp)
-            except (KeyError, ValueError):
+                return self.get_value_maybe_box(series, key)
+            except (TypeError, ValueError, KeyError):
                 raise KeyError(key)
+
+    def get_value_maybe_box(self, series, key):
+        # needed to localize naive datetimes
+        if self.tz is not None:
+            key = Timestamp(key, tz=self.tz)
+        elif not isinstance(key, Timestamp):
+            key = Timestamp(key)
+        values = self._engine.get_value(_values_from_object(series), key)
+        return _maybe_box(self, values, series, key)
 
     def get_loc(self, key):
         """
@@ -1294,6 +1303,8 @@ class DatetimeIndex(Int64Index):
                 return result
 
             return self._simple_new(result, self.name, new_offset, self.tz)
+
+    _getitem_slice = __getitem__
 
     # Try to run function on index first, and then on elements of index
     # Especially important for group-by functionality

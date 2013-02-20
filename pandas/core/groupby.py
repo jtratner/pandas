@@ -227,7 +227,7 @@ class GroupBy(PandasObject):
 
     @property
     def _selection_list(self):
-        if not isinstance(self._selection, (list, tuple, np.ndarray)):
+        if not isinstance(self._selection, (list, tuple, Series, np.ndarray)):
             return [self._selection]
         return self._selection
 
@@ -276,7 +276,7 @@ class GroupBy(PandasObject):
             obj = self.obj
 
         inds = self.indices[name]
-        return obj.take(inds, axis=self.axis)
+        return obj.take(inds, axis=self.axis, convert=False)
 
     def __iter__(self):
         """
@@ -374,7 +374,11 @@ class GroupBy(PandasObject):
         except GroupByError:
             raise
         except Exception:  # pragma: no cover
-            f = lambda x: x.median(axis=self.axis)
+
+            def f(x):
+                if isinstance(x, np.ndarray):
+                    x = Series(x)
+                return x.median(axis=self.axis)
             return self._python_agg_general(f)
 
     def std(self, ddof=1):
@@ -891,9 +895,9 @@ class Grouper(object):
         group_index, _, ngroups = self.group_info
 
         # avoids object / Series creation overhead
-        dummy = obj[:0].copy()
+        dummy = obj._get_values(slice(None,0)).to_dense()
         indexer = _algos.groupsort_indexer(group_index, ngroups)[0]
-        obj = obj.take(indexer)
+        obj = obj.take(indexer, convert=False)
         group_index = com.take_nd(group_index, indexer, allow_fill=False)
         grouper = lib.SeriesGrouper(obj, func, group_index, ngroups,
                                     dummy)
@@ -901,19 +905,18 @@ class Grouper(object):
         return result, counts
 
     def _aggregate_series_pure_python(self, obj, func):
+
         group_index, _, ngroups = self.group_info
 
         counts = np.zeros(ngroups, dtype=int)
         result = None
-
-        group_index, _, ngroups = self.group_info
 
         splitter = get_splitter(obj, group_index, ngroups, axis=self.axis)
 
         for label, group in splitter:
             res = func(group)
             if result is None:
-                if isinstance(res, np.ndarray) or isinstance(res, list):
+                if isinstance(res, (Series, np.ndarray)) or isinstance(res, list):
                     raise ValueError('Function does not reduce')
                 result = np.empty(ngroups, dtype='O')
 
@@ -1014,7 +1017,7 @@ class BinGrouper(Grouper):
             start = 0
             for edge, label in izip(self.bins, self.binlabels):
                 inds = range(start, edge)
-                yield label, data.take(inds, axis=axis)
+                yield label, data.take(inds, axis=axis, convert=False)
                 start = edge
 
             n = len(data.axes[axis])
@@ -1032,6 +1035,7 @@ class BinGrouper(Grouper):
             # group might be modified
             group_axes = _get_axes(group)
             res = f(group)
+
             if not _is_indexed_like(res, group_axes):
                 mutated = True
 
@@ -1195,7 +1199,7 @@ class Grouping(object):
                     self.name = factor.name
 
             # no level passed
-            if not isinstance(self.grouper, np.ndarray):
+            if not isinstance(self.grouper, (Series, np.ndarray)):
                 self.grouper = self.index.map(self.grouper)
                 if not (hasattr(self.grouper,"__len__") and \
                    len(self.grouper) == len(self.index)):
@@ -1262,7 +1266,7 @@ def _get_grouper(obj, key=None, axis=0, level=None, sort=True):
                     raise ValueError('level name %s is not the name of the index' % level)
             elif level > 0:
                 raise ValueError('level > 0 only valid with MultiIndex')
-            
+
             level = None
             key = group_axis
 
@@ -1280,7 +1284,7 @@ def _get_grouper(obj, key=None, axis=0, level=None, sort=True):
     # what are we after, exactly?
     match_axis_length = len(keys) == len(group_axis)
     any_callable = any(callable(g) or isinstance(g, dict) for g in keys)
-    any_arraylike = any(isinstance(g, (list, tuple, np.ndarray))
+    any_arraylike = any(isinstance(g, (list, tuple, Series, np.ndarray))
                         for g in keys)
 
     try:
@@ -1345,7 +1349,7 @@ def _convert_grouper(axis, grouper):
             return grouper.values
         else:
             return grouper.reindex(axis).values
-    elif isinstance(grouper, (list, np.ndarray)):
+    elif isinstance(grouper, (list, Series, np.ndarray)):
         if len(grouper) != len(axis):
             raise AssertionError('Grouper and axis must be same length')
         return grouper
@@ -1505,7 +1509,7 @@ class SeriesGroupBy(GroupBy):
         for name, group in self:
             group.name = name
             output = func(group, *args, **kwargs)
-            if isinstance(output, np.ndarray):
+            if isinstance(output, (Series, np.ndarray)):
                 raise Exception('Must produce aggregated value')
             result[name] = self._try_cast(output, group)
 
@@ -1793,7 +1797,7 @@ class NDFrameGroupBy(GroupBy):
         obj = self._obj_with_exclusions
 
         result = {}
-        if axis != obj._het_axis:
+        if axis != obj._info_axis_number:
             try:
                 for name, data in self:
                     # for name in self.indices:
@@ -1823,9 +1827,10 @@ class NDFrameGroupBy(GroupBy):
         cannot_agg = []
         for item in obj:
             try:
-                colg = SeriesGroupBy(obj[item], selection=item,
+                data = obj[item]
+                colg = SeriesGroupBy(data, selection=item,
                                      grouper=self.grouper)
-                result[item] = colg.aggregate(func, *args, **kwargs)
+                result[item] = self._try_cast(colg.aggregate(func, *args, **kwargs), data)
             except ValueError:
                 cannot_agg.append(item)
                 continue
@@ -1881,7 +1886,7 @@ class NDFrameGroupBy(GroupBy):
                 else:
                     key_index = Index(keys, name=key_names[0])
 
-            if isinstance(values[0], np.ndarray):
+            if isinstance(values[0], (np.ndarray, Series)):
                 if isinstance(values[0], Series):
                     applied_index    = self.obj._get_axis(self.axis)
                     all_indexed_same = _all_indexes_same([x.index for x in values])
@@ -1905,7 +1910,7 @@ class NDFrameGroupBy(GroupBy):
                     if not all_indexed_same:
                         return self._concat_objects(keys, values,
                                                     not_indexed_same=not_indexed_same)
-                    
+
                 try:
                     if self.axis == 0:
 
@@ -2004,7 +2009,7 @@ class NDFrameGroupBy(GroupBy):
         else:
             fast_path = lambda group: func(group, *args, **kwargs)
             slow_path = lambda group: group.apply(lambda x: func(x, *args, **kwargs), axis=self.axis)
-        return fast_path, slow_path 
+        return fast_path, slow_path
 
     def _choose_path(self, fast_path, slow_path, group):
         path = slow_path
@@ -2112,7 +2117,7 @@ class DataFrameGroupBy(NDFrameGroupBy):
         if self._selection is not None:
             raise Exception('Column(s) %s already selected' % self._selection)
 
-        if isinstance(key, (list, tuple, np.ndarray)) or not self.as_index:
+        if isinstance(key, (list, tuple, Series, np.ndarray)) or not self.as_index:
             return DataFrameGroupBy(self.obj, self.grouper, selection=key,
                                     grouper=self.grouper,
                                     exclusions=self.exclusions,
@@ -2342,7 +2347,7 @@ class DataSplitter(object):
             yield i, self._chop(sdata, slice(start, end))
 
     def _get_sorted_data(self):
-        return self.data.take(self.sort_idx, axis=self.axis)
+        return self.data.take(self.sort_idx, axis=self.axis, convert=False)
 
     def _chop(self, sdata, slice_obj):
         return sdata[slice_obj]
@@ -2358,7 +2363,7 @@ class ArraySplitter(DataSplitter):
 class SeriesSplitter(DataSplitter):
 
     def _chop(self, sdata, slice_obj):
-        return sdata._get_values(slice_obj)
+        return sdata._get_values(slice_obj).to_dense()
 
 
 class FrameSplitter(DataSplitter):
