@@ -234,6 +234,8 @@ pandas 0.11.1
   - Fix incorrect arguments passed to concat that are not list-like (e.g. concat(df1,df2)) (GH3481_)
   - Correctly parse when passed the ``dtype=str`` (or other variable-len string dtypes) in ``read_csv`` (GH3795_)
   - Fix index name not propogating when using ``loc/ix`` (GH3880_)
+  - Fixed ``__truediv__`` in Python 2.7 with ``numexpr`` installed to actually do true division when dividing
+    two integer arrays with at least 10000 cells total (GH3764_)
 
 .. _GH3164: https://github.com/pydata/pandas/issues/3164
 .. _GH2786: https://github.com/pydata/pandas/issues/2786
@@ -329,7 +331,7 @@ pandas 0.11.1
 .. _GH3873: https://github.com/pydata/pandas/issues/3873
 .. _GH3877: https://github.com/pydata/pandas/issues/3877
 .. _GH3880: https://github.com/pydata/pandas/issues/3880
-
+.. _GH3764: https://github.com/pydata/pandas/issues/3764
 
 pandas 0.11.0
 =============
