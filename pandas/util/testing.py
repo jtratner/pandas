@@ -327,18 +327,18 @@ def makeObjectSeries():
     return Series(dateIndex, index=index)
 
 
-def getSeriesData():
-    index = makeStringIndex(N)
-    return dict((c, Series(randn(N), index=index)) for c in getCols(K))
+def getSeriesData(nrows=N, ncols=K):
+    index = makeStringIndex(nrows)
+    return dict((c, Series(randn(nrows), index=index)) for c in getCols(ncols))
 
-def getIntegerSeriesData():
+def getIntegerSeriesData(nrows=N, ncols=K):
     """same as `getSeriesData` but returns random  positive and negative *integers* instead"""
-    index = makeStringIndex(N)
+    index = makeStringIndex(nrows)
     maxint = np.iinfo('i').max
-    return dict((c, Series(randint(-maxint, maxint, N), index=index)) for c in getCols(K))
+    return dict((c, Series(randint(-maxint, maxint, nrows), index=index)) for c in getCols(ncols))
 
-def makeDataFrame():
-    data = getSeriesData()
+def makeDataFrame(nrows=N, ncols=K):
+    data = getSeriesData(nrows=nrows, ncols=ncols)
     return DataFrame(data)
 
 
