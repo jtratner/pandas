@@ -6,7 +6,7 @@ from numpy import nan
 
 from pandas import bdate_range
 from pandas.core.index import Index, MultiIndex
-from pandas.core.common import rands
+from pandas.core.common import rands, PerformanceWarning
 from pandas.core.api import Categorical, DataFrame
 from pandas.core.groupby import GroupByError, SpecificationError, DataError
 from pandas.core.series import Series
@@ -334,8 +334,8 @@ class TestGroupBy(unittest.TestCase):
 
     def test_agg_must_agg(self):
         grouped = self.df.groupby('A')['C']
-        self.assertRaises(Exception, grouped.agg, lambda x: x.describe())
-        self.assertRaises(Exception, grouped.agg, lambda x: x.index[:2])
+        self.assertRaises(PerformanceWarning, grouped.agg, lambda x: x.describe())
+        self.assertRaises(PerformanceWarning, grouped.agg, lambda x: x.index[:2])
 
     def test_agg_ser_multi_key(self):
         ser = self.df.C
