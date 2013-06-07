@@ -3,6 +3,7 @@ import types
 import numpy as np
 
 from pandas.core.categorical import Categorical
+from pandas.core.common import PerformanceWarning
 from pandas.core.frame import DataFrame
 from pandas.core.generic import NDFrame
 from pandas.core.index import Index, MultiIndex, _ensure_index
@@ -919,7 +920,7 @@ class Grouper(object):
             res = func(group)
             if result is None:
                 if isinstance(res, np.ndarray) or isinstance(res, list):
-                    raise ValueError('Function does not reduce')
+                    raise PerformanceWarning('Function does not reduce. Will not be able to do optimizations.')
                 result = np.empty(ngroups, dtype='O')
 
             counts[label] = group.shape[0]
@@ -1508,7 +1509,7 @@ class SeriesGroupBy(GroupBy):
             group.name = name
             output = func(group, *args, **kwargs)
             if isinstance(output, np.ndarray):
-                raise Exception('Must produce aggregated value')
+                raise PerformanceWarning('Function does not produce aggregated values. Will not be able to optimize.')
             result[name] = self._try_cast(output, group)
 
         return result
