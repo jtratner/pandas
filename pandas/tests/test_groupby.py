@@ -12,7 +12,8 @@ from pandas.core.api import Categorical, DataFrame
 from pandas.core.groupby import GroupByError, SpecificationError, DataError
 from pandas.core.series import Series
 from pandas.util.testing import (assert_panel_equal, assert_frame_equal,
-                                 assert_series_equal, assert_almost_equal)
+                                 assert_series_equal, assert_almost_equal,
+                                 assert_produces_warning)
 from pandas.core.panel import Panel
 from pandas.tools.merge import concat
 from collections import defaultdict
@@ -132,10 +133,8 @@ class TestGroupBy(unittest.TestCase):
             self.assertEqual(agged[1], 21)
 
             # corner cases
-            with warnings.catch_warnings():
-                warnings.simplefilter("error")
-                self.assertRaises(PerformanceWarning, grouped.aggregate, lambda x: x * 2)
-
+            with assert_produces_warning(PerformanceWarning):
+                grouped.aggregate(lambda x: x * 2)
 
         for dtype in ['int64','int32','float64','float32']:
             checkit(dtype)
@@ -337,10 +336,10 @@ class TestGroupBy(unittest.TestCase):
 
     def test_agg_must_agg(self):
         grouped = self.df.groupby('A')['C']
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            self.assertRaises(PerformanceWarning, grouped.agg, lambda x: x.describe())
-            self.assertRaises(PerformanceWarning, grouped.agg, lambda x: x.index[:2])
+        with assert_produces_warning(PerformanceWarning):
+            grouped.agg(lambda x: x.describe())
+        with assert_produces_warning(PerformanceWarning):
+            grouped.agg(lambda x: x.index[:2])
 
     def test_agg_ser_multi_key(self):
         ser = self.df.C
