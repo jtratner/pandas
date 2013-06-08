@@ -132,7 +132,9 @@ class TestGroupBy(unittest.TestCase):
             self.assertEqual(agged[1], 21)
 
             # corner cases
-            self.assertRaises(Exception, grouped.aggregate, lambda x: x * 2)
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                self.assertRaises(PerformanceWarning, grouped.aggregate, lambda x: x * 2)
 
 
         for dtype in ['int64','int32','float64','float32']:
@@ -335,7 +337,7 @@ class TestGroupBy(unittest.TestCase):
 
     def test_agg_must_agg(self):
         grouped = self.df.groupby('A')['C']
-        with warning.catch_warning(record=True) as w:
+        with warnings.catch_warnings():
             warnings.simplefilter("error")
             self.assertRaises(PerformanceWarning, grouped.agg, lambda x: x.describe())
             self.assertRaises(PerformanceWarning, grouped.agg, lambda x: x.index[:2])
