@@ -1,5 +1,6 @@
 import nose
 import unittest
+import warnings
 
 from datetime import datetime
 from numpy import nan
@@ -334,8 +335,10 @@ class TestGroupBy(unittest.TestCase):
 
     def test_agg_must_agg(self):
         grouped = self.df.groupby('A')['C']
-        self.assertRaises(PerformanceWarning, grouped.agg, lambda x: x.describe())
-        self.assertRaises(PerformanceWarning, grouped.agg, lambda x: x.index[:2])
+        with warning.catch_warning(record=True) as w:
+            warnings.simplefilter("error")
+            self.assertRaises(PerformanceWarning, grouped.agg, lambda x: x.describe())
+            self.assertRaises(PerformanceWarning, grouped.agg, lambda x: x.index[:2])
 
     def test_agg_ser_multi_key(self):
         ser = self.df.C
