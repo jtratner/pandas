@@ -134,7 +134,12 @@ class TestGroupBy(unittest.TestCase):
 
             # corner cases
             with assert_produces_warning(PerformanceWarning):
-                grouped.aggregate(lambda x: x * 2)
+                index = grouped.indices.keys()
+                result = grouped.aggregate(lambda x: x * 2)
+                expected = Series([ser * 2 for _, ser in grouped], index=index)
+                for r, e in zip(result, expected):
+                    assert (r == e).all()
+
 
         for dtype in ['int64','int32','float64','float32']:
             checkit(dtype)
@@ -336,10 +341,19 @@ class TestGroupBy(unittest.TestCase):
 
     def test_agg_must_agg(self):
         grouped = self.df.groupby('A')['C']
+        index = grouped.indices.keys()
         with assert_produces_warning(PerformanceWarning):
-            grouped.agg(lambda x: x.describe())
+            agg_func = lambda x: x.describe()
+            result = grouped.agg(agg_func)
+            expected = Series([agg_func(group) for _, group in grouped], index=index)
+            for r, e in zip(result, expected):
+                assert (r == e).all()
         with assert_produces_warning(PerformanceWarning):
-            grouped.agg(lambda x: x.index[:2])
+            agg_func = lambda x: x.index[:2]
+            result = grouped.agg(agg_func)
+            expected = Series([agg_func(group) for _, group in grouped], index=index)
+            for r, e in zip(result, expected):
+                assert (r == e).all()
 
     def test_agg_ser_multi_key(self):
         ser = self.df.C
