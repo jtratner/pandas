@@ -6,12 +6,11 @@ import unittest
 import warnings
 import nose
 
-from pandas.util.testing import assert_almost_equal
+from pandas.util.testing import assert_almost_equal, assert_produces_warning
 
 # let's get meta.
 
 class TestUtilTesting(unittest.TestCase):
-    _multiprocess_can_split_ = True
 
     def __init__(self, *args):
         super(TestUtilTesting, self).__init__(*args)
