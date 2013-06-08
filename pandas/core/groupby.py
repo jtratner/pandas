@@ -1,5 +1,6 @@
 from itertools import izip
 import types
+import warnings
 import numpy as np
 
 from pandas.core.categorical import Categorical
@@ -19,7 +20,7 @@ from pandas.core.common import _possibly_downcast_to_dtype, notnull
 import pandas.lib as lib
 import pandas.algos as _algos
 import pandas.hashtable as _hash
-
+_non_agg_warning = "Function does not produce aggregated values. Will not be able to optimize and may produce unexpected results."
 _agg_doc = """Aggregate using input function or dict of {column -> function}
 
 Parameters
@@ -920,7 +921,7 @@ class Grouper(object):
             res = func(group)
             if result is None:
                 if isinstance(res, np.ndarray) or isinstance(res, list):
-                    raise PerformanceWarning('Function does not reduce. Will not be able to do optimizations.')
+                    warnings.warn(_non_agg_warning, PerformanceWarning, stacklevel=2)
                 result = np.empty(ngroups, dtype='O')
 
             counts[label] = group.shape[0]
@@ -1509,7 +1510,7 @@ class SeriesGroupBy(GroupBy):
             group.name = name
             output = func(group, *args, **kwargs)
             if isinstance(output, np.ndarray):
-                raise PerformanceWarning('Function does not produce aggregated values. Will not be able to optimize.')
+                warnings.warn(_non_agg_warning, PerformanceWarning, stacklevel=2)
             result[name] = self._try_cast(output, group)
 
         return result
