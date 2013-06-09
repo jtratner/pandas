@@ -2130,6 +2130,10 @@ class Series(pa.Array, generic.PandasObject):
     except AttributeError:  # pragma: no cover
         # Python 3
         div = _flex_method(operator.truediv, 'divide')
+    truediv = _flex_method(operator.truediv, 'true division')
+    floordiv = _flex_method(operator.floordiv, 'floor division')
+    mod = _flex_method(operator.mod, 'modulo')
+    pow = _flex_method(operator.pow, 'pow')
 
     def combine(self, other, func, fill_value=nan):
         """
