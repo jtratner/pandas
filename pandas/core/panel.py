@@ -1656,8 +1656,10 @@ Returns
             cls.divide = cls.div = _panel_arith_method(operator.div, 'divide')
         except AttributeError:  # pragma: no cover
             # Python 3
-            cls.divide = cls.div = _panel_arith_method(
-                operator.truediv, 'divide')
+            cls.divide = cls.div = _panel_arith_method(operator.truediv,
+                                                       'divide')
+        cls.truediv = _panel_arith_method(operator.truediv, 'true division')
+        cls.floordiv = _panel_arith_method(operator.floordiv, 'floor division')
 
         _agg_doc = """
 Return %(desc)s over requested axis
