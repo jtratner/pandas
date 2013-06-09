@@ -32,6 +32,7 @@ import pandas.core.array as pa
 import pandas.core.common as com
 import pandas.core.datetools as datetools
 import pandas.core.format as fmt
+import pandas.core.expressions as expressions
 import pandas.core.generic as generic
 import pandas.core.nanops as nanops
 from pandas.util.decorators import Appender, Substitution, cache_readonly
@@ -55,17 +56,14 @@ _SHOW_WARNINGS = True
 # Wrapper function for Series arithmetic methods
 
 
-def _arith_method(op, name, fill_zeros=None):
+def _arith_method(op, name, str_rep=None, fill_zeros=None, **eval_kwargs):
     """
     Wrapper function for Series arithmetic operations, to avoid
     code duplication.
     """
     def na_op(x, y):
         try:
-
-            result = op(x, y)
-            result = com._fill_zeros(result,y,fill_zeros)
-
+            result = expressions.evaluate(op, str_rep, x, y, raise_on_error=True, **eval_kwargs)
         except TypeError:
             result = pa.empty(len(x), dtype=x.dtype)
             if isinstance(y, pa.Array):
@@ -77,6 +75,8 @@ def _arith_method(op, name, fill_zeros=None):
 
             result, changed = com._maybe_upcast_putmask(result,-mask,pa.NA)
 
+        # handles discrepancy between numpy and numexpr on division/mod by 0
+        result = com._fill_zeros(result,y,fill_zeros)
         return result
 
     def wrapper(self, other, name=name):
@@ -184,6 +184,7 @@ def _arith_method(op, name, fill_zeros=None):
                 lvalues = lvalues.values
             return Series(wrap_results(na_op(lvalues, rvalues)),
                           index=self.index, name=self.name, dtype=dtype)
+    wrapper.__name__ = name
     return wrapper
 
 
@@ -239,6 +240,7 @@ def _comp_method(op, name):
                                 % type(other))
             return Series(na_op(values, other),
                           index=self.index, name=self.name)
+    wrapper.__name__ = name
     return wrapper
 
 
@@ -280,6 +282,7 @@ def _bool_method(op, name):
             # scalars
             return Series(na_op(self.values, other),
                           index=self.index, name=self.name)
+    wrapper.__name__ = name
     return wrapper
 
 
@@ -1252,14 +1255,19 @@ class Series(pa.Array, generic.PandasObject):
     #----------------------------------------------------------------------
     #   Arithmetic operators
 
-    __add__ = _arith_method(operator.add, '__add__')
-    __sub__ = _arith_method(operator.sub, '__sub__')
-    __mul__ = _arith_method(operator.mul, '__mul__')
-    __truediv__ = _arith_method(operator.truediv, '__truediv__', fill_zeros=np.inf)
+    __add__ = _arith_method(operator.add, '__add__', '+')
+    __sub__ = _arith_method(operator.sub, '__sub__', '-')
+    __mul__ = _arith_method(operator.mul, '__mul__', '*')
+    __truediv__ = _arith_method(operator.truediv, '__truediv__', '/', truediv=True, fill_zeros=np.inf)
+    # numexpr produces a different value when dividing by zero, so can't use
+    # floordiv speed up (yet)
+    # __floordiv__ = _arith_method(operator.floordiv, '__floordiv__', '//', fill_zeros=np.inf)
     __floordiv__ = _arith_method(operator.floordiv, '__floordiv__', fill_zeros=np.inf)
-    __pow__ = _arith_method(operator.pow, '__pow__')
+    __pow__ = _arith_method(operator.pow, '__pow__', '**')
+    # Causes a floating point exception in the tests when numexpr enabled, so for now no speedup
+    # __mod__ = _arith_method(operator.mod, '__mod__', '%', fill_zeros=np.nan)
     __mod__ = _arith_method(operator.mod, '__mod__', fill_zeros=np.nan)
-
+    # TODO: add a `flip` method so you can speed up both directions
     __radd__ = _arith_method(_radd_compat, '__add__')
     __rmul__ = _arith_method(operator.mul, '__mul__')
     __rsub__ = _arith_method(lambda x, y: y - x, '__sub__')
@@ -1300,7 +1308,8 @@ class Series(pa.Array, generic.PandasObject):
 
     # Python 2 division operators
     if not py3compat.PY3:
-        __div__ = _arith_method(operator.div, '__div__', fill_zeros=np.inf)
+        __div__ = _arith_method(operator.div, '__div__', '/',
+                                truediv=False, fill_zeros=np.inf)
         __rdiv__ = _arith_method(lambda x, y: y / x, '__div__', fill_zeros=np.inf)
         __idiv__ = __div__
 

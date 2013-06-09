@@ -23,6 +23,7 @@ from pandas.core.generic import NDFrame
 from pandas.util import py3compat
 from pandas.util.decorators import deprecate, Appender, Substitution
 import pandas.core.common as com
+import pandas.core.expressions as expressions
 import pandas.core.nanops as nanops
 import pandas.lib as lib
 
@@ -90,15 +91,24 @@ def panel_index(time, panels, names=['time', 'panel']):
     return MultiIndex(levels, labels, sortorder=None, names=names)
 
 
-def _arith_method(func, name):
+def _arith_method(op, name, str_rep=None, fill_zeros=None, **eval_kwargs):
     # work only for scalars
+    def na_op(x, y):
+        try:
+            result = expressions.evaluate(op, str_rep, x, y, raise_on_error=True, **eval_kwargs)
+        except TypeError:
+            result = op(x, y)
+
+        # handles discrepancy between numpy and numexpr on division/mod by 0
+        result = com._fill_zeros(result,y,fill_zeros)
+        return result
 
     def f(self, other):
         if not np.isscalar(other):
             raise ValueError('Simple arithmetic with %s can only be '
                              'done with scalar values' % self._constructor.__name__)
 
-        return self._combine(other, func)
+        return self._combine(other, na_op)
     f.__name__ = name
     return f
 
@@ -213,12 +223,14 @@ class Panel(NDFrame):
         d.update(kwargs)
         return d
 
-    __add__ = _arith_method(operator.add, '__add__')
-    __sub__ = _arith_method(operator.sub, '__sub__')
-    __truediv__ = _arith_method(operator.truediv, '__truediv__')
+    __add__ = _arith_method(operator.add, '__add__', '+')
+    __sub__ = _arith_method(operator.sub, '__sub__', '-')
+    __truediv__ = _arith_method(operator.truediv, '__truediv__', '/', truediv=True, fill_zeros=np.inf)
+    __floordiv__ = _arith_method(operator.floordiv, '__floordiv__', '//',
+                                 fill_zeros=np.inf)
     __floordiv__ = _arith_method(operator.floordiv, '__floordiv__')
-    __mul__ = _arith_method(operator.mul, '__mul__')
-    __pow__ = _arith_method(operator.pow, '__pow__')
+    __mul__ = _arith_method(operator.mul, '__mul__', '*')
+    __pow__ = _arith_method(operator.pow, '__pow__', '**')
 
     __radd__ = _arith_method(operator.add, '__radd__')
     __rmul__ = _arith_method(operator.mul, '__rmul__')
@@ -228,7 +240,7 @@ class Panel(NDFrame):
     __rpow__ = _arith_method(lambda x, y: y ** x, '__rpow__')
 
     if not py3compat.PY3:
-        __div__ = _arith_method(operator.div, '__div__')
+        __div__ = _arith_method(operator.div, '__div__', '/', truediv=False)
         __rdiv__ = _arith_method(lambda x, y: y / x, '__rdiv__')
 
     def __init__(self, data=None, items=None, major_axis=None, minor_axis=None,
