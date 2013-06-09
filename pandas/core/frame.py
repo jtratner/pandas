@@ -194,8 +194,6 @@ def _arith_method(op, name, str_rep = None, default_axis='columns', fill_zeros=N
     def na_op(x, y):
         try:
             result = expressions.evaluate(op, str_rep, x, y, raise_on_error=True, **eval_kwargs)
-            result = com._fill_zeros(result,y,fill_zeros)
-
         except TypeError:
             xrav = x.ravel()
             result = np.empty(x.size, dtype=x.dtype)
@@ -210,6 +208,8 @@ def _arith_method(op, name, str_rep = None, default_axis='columns', fill_zeros=N
             result, changed = com._maybe_upcast_putmask(result,-mask,np.nan)
             result = result.reshape(x.shape)
 
+        # handles discrepancy between numpy and numexpr on division/mod by 0
+        result = com._fill_zeros(result,y,fill_zeros)
         return result
 
     @Appender(_arith_doc % name)
@@ -840,7 +840,16 @@ class DataFrame(NDFrame):
     add = _arith_method(operator.add, 'add', '+')
     mul = _arith_method(operator.mul, 'multiply', '*')
     sub = _arith_method(operator.sub, 'subtract', '-')
-    div = divide = _arith_method(lambda x, y: x / y, 'divide', '/')
+    if not py3compat.PY3:
+        div = divide = _arith_method(operator.div, 'divide', '/',
+                truediv=False, fill_zeros=np.inf, default_axis=None)
+    else:
+        div = divide = _arith_method(operator.truediv, 'divide', '/',
+                truediv=True, fill_zeros=np.inf, default_axis=None)
+    truediv = _arith_method(operator.truediv, 'true division', '/',
+            truediv=True, fill_zeros=np.inf, default_axis=None)
+    floordiv = _arith_method(operator.floordiv, 'floor division', '//',
+                                 default_axis=None, fill_zeros=np.inf)
     pow = _arith_method(operator.pow, 'pow', '**')
     mod = _arith_method(lambda x, y: x % y, 'mod')
 
