@@ -855,10 +855,7 @@ class DataFrame(NDFrame):
     __mul__ = _arith_method(operator.mul, '__mul__', '*', default_axis=None)
     __truediv__ = _arith_method(operator.truediv, '__truediv__', '/',
                                 default_axis=None, fill_zeros=np.inf, truediv=True)
-    # numexpr produces a different value (python/numpy: 0.000, numexpr: inf)
-    # when dividing by zero, so can't use floordiv speed up (yet)
-    # __floordiv__ = _arith_method(operator.floordiv, '__floordiv__', '//',
-    __floordiv__ = _arith_method(operator.floordiv, '__floordiv__',
+    __floordiv__ = _arith_method(operator.floordiv, '__floordiv__', '//',
                                  default_axis=None, fill_zeros=np.inf)
     __pow__ = _arith_method(operator.pow, '__pow__', '**', default_axis=None)
 
