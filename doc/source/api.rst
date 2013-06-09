@@ -239,6 +239,9 @@ Binary operator functions
 
    Series.add
    Series.div
+   Series.truediv
+   Series.floordiv
+   Series.mod
    Series.mul
    Series.sub
    Series.combine
@@ -443,6 +446,9 @@ Binary operator functions
 
    DataFrame.add
    DataFrame.div
+   DataFrame.truediv
+   DataFrame.floordiv
+   DataFrame.mod
    DataFrame.mul
    DataFrame.sub
    DataFrame.radd
@@ -673,6 +679,8 @@ Binary operator functions
 
    Panel.add
    Panel.div
+   Panel.truediv
+   Panel.floordiv
    Panel.mul
    Panel.sub
 

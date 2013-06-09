@@ -87,6 +87,14 @@ pandas 0.11.1
   - Add ``unit`` keyword to ``Timestamp`` and ``to_datetime`` to enable passing of
     integers or floats that are in an epoch unit of ``s, ms, us, ns``
     (e.g. unix timestamps or epoch ``s``, with fracional seconds allowed) (GH3540_)
+  - Improvements to arithmetic operators and performance improvements to
+    arithmetic operations:
+
+    - Add ``truediv`` and ``floordiv`` methods to Series, Frame and Panel.
+    - Add ``mod`` method to Series and Frame
+    - Accelerated ``+``, ``-``, ``*``, ``**``, ``/`` (``truediv`` and Python 2
+      ``div`` only) with ``numexpr`` for Series, Frame and Panel as appropriate
+      (``//`` and ``%`` are currently NOT accelerated).
 
 **API Changes**
 
