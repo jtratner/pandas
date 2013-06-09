@@ -4166,7 +4166,7 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
         self.assert_(index == frame.index[-6])
 
     def test_arith_flex_frame(self):
-        ops = ['add', 'sub', 'mul','div', 'truediv', 'pow', 'floordiv']
+        ops = ['add', 'sub', 'mul','div', 'truediv', 'pow', 'floordiv', 'mod']
         if not py3compat.PY3:
             aliases = {}
         else:
