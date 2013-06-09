@@ -2137,6 +2137,10 @@ class Series(pa.Array, generic.PandasObject):
         # Python 3
         div = _flex_method(operator.truediv, 'divide')
     mod = _flex_method(operator.mod, 'mod')
+    truediv = _flex_method(operator.truediv, 'true division')
+    floordiv = _flex_method(operator.floordiv, 'floor division')
+    mod = _flex_method(operator.mod, 'modulo')
+    pow = _flex_method(operator.pow, 'pow')
 
     def combine(self, other, func, fill_value=nan):
         """
