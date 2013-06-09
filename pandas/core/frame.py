@@ -851,6 +851,7 @@ class DataFrame(NDFrame):
             truediv=True, fill_zeros=np.inf, default_axis=None)
     floordiv = _arith_method(operator.floordiv, 'floor division', '//',
                                  default_axis=None, fill_zeros=np.inf)
+    mod = _arith_method(operator.mod, 'mod', default_axis=None, fill_zeros=np.nan)
     pow = _arith_method(operator.pow, 'pow', '**')
 
     radd = _arith_method(_radd_compat, 'radd')
