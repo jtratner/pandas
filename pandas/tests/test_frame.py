@@ -4174,7 +4174,8 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
 
         for op in ops:
             try:
-                f = getattr(operator, op)
+                alias = aliases.get(op, op)
+                f = getattr(operator, alias)
                 result = getattr(self.frame, op)(2 * self.frame)
                 exp = f(self.frame, 2 * self.frame)
                 assert_frame_equal(result, exp)
