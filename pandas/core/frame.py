@@ -868,9 +868,10 @@ class DataFrame(NDFrame):
                                  default_axis=None, fill_zeros=np.inf)
     __pow__ = _arith_method(operator.pow, '__pow__', '**', default_axis=None)
 
-    # currently causes a floating point exception to occur - so sticking with unaccelerated for now
+    # Causes a floating point exception in the tests when numexpr enabled, so for now no speedup
     # __mod__ = _arith_method(operator.mod, '__mod__', '%', default_axis=None, fill_zeros=np.nan)
-    __mod__ = _arith_method(operator.mod, '__mod__', default_axis=None, fill_zeros=np.nan)
+    __mod__ = _arith_method(operator.mod, '__mod__',
+                            default_axis=None, fill_zeros=np.nan)
 
     __radd__ = _arith_method(_radd_compat, '__radd__', default_axis=None)
     __rmul__ = _arith_method(operator.mul, '__rmul__', default_axis=None)
