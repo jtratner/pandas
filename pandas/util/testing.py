@@ -144,7 +144,7 @@ def assert_almost_equal(a, b, check_less_precise = False):
     err_msg = lambda a, b: 'expected %.5f but got %.5f' % (b, a)
 
     if isnull(a):
-        np.testing.assert_(isnull(b))
+        np.testing.assert_(isnull(b), "Expected null (%r) found %r instead" % (a, b))
         return
 
     if isinstance(a, (bool, float, int, np.float32)):
