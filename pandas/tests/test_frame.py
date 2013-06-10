@@ -10513,6 +10513,37 @@ starting,ending,measure
         f = lambda x: x.rename({1: 'foo'}, inplace=True)
         _check_f(data.copy()['c'], f)
 
+    def test_default_axis(self):
+        # in frame, default axis is `None` for special methods
+        # and `columns` for flex methods
+        frame = DataFrame(np.random.randn(5, 7), columns=list("ABCDEFG"))
+        ops = ['add', 'radd', 'sub', 'rsub', 'div', 'rdiv', 'truediv', 'rtruediv', 'floordiv', 'rfloordiv', 'mul', 'rmul', 'pow', 'rpow', 'mod', 'rmod']
+        special_ops = list("__%s__" % op for op in ops)
+        for flex_name, special_name in zip(ops, special_ops):
+            try:
+                try:
+                    flex_meth = getattr(frame, flex_name)
+                    special_meth = getattr(frame, special_name)
+                except AttributeError:
+                    # for now, ignore if doesn't respond to methods
+                    continue
+                expected = flex_meth(frame.irow(0), axis=1)
+                result = flex_meth(frame.irow(0))
+                #flex method has right axis
+                assert_frame_equal(result, expected)
+                #special method has right axis
+                result2 = special_meth(frame.irow(0))
+                assert_frame_equal(result2, expected)
+                # finally, test that going against default axis results in Na
+                flex_result = flex_meth(frame.icol(0))
+                assert isnull(flex_result).all().all(), "Flex method should have been all NaN when using column"
+                flex_result2 = flex_meth(frame.irow(0), axis=0)
+                assert isnull(flex_result2).all().all(), "With axis 0, flex method should be all NaN when using row"
+                special_result = special_meth(frame.icol(0))
+                assert isnull(special_result).all().all(), "Special method should be all NaN when using column"
+            except:
+                print("Failure on %r, %r" % (flex_name, special_name))
+                raise
 
 if __name__ == '__main__':
     # unittest.main()
