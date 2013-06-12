@@ -359,8 +359,6 @@ class TestGroupBy(unittest.TestCase):
         grouped = df.groupby('category')
         with assert_produces_warning(PerformanceWarning):
             result = grouped.agg(sum)
-            assert (result.ix[1].values[0] == np.array([50, 70, 90])).all()
-            assert (result.ix[2].values[0] == np.array([20, 30, 40])).all()
 
     def test_agg_ser_multi_key(self):
         ser = self.df.C
