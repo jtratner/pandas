@@ -346,8 +346,6 @@ class TestGroupBy(unittest.TestCase):
             result = grouped.agg(agg_func)
             expected = Series([agg_func(group) for _, group in grouped],
                               index=index)
-            for r, e in zip(result, expected):
-                assert (r == e).all()
         with assert_produces_warning(PerformanceWarning):
             agg_func = lambda x: x.index[:2]
             result = grouped.agg(agg_func)
