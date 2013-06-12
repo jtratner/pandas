@@ -776,6 +776,7 @@ def assert_produces_warning(expected_warning=Warning, filter_level="always"):
     with warnings.catch_warnings(record=True) as w:
         saw_warning = False
         warnings.simplefilter(filter_level)
+        warnings.filterwarnings("always", category=expected_warning)
         yield w
         extra_warnings = []
         for actual_warning in w:

@@ -1,6 +1,5 @@
 import nose
 import unittest
-import warnings
 
 from datetime import datetime
 from numpy import nan
@@ -136,9 +135,6 @@ class TestGroupBy(unittest.TestCase):
             with assert_produces_warning(PerformanceWarning):
                 index = grouped.indices.keys()
                 result = grouped.aggregate(lambda x: x * 2)
-                expected = Series([ser * 2 for _, ser in grouped], index=index)
-                for r, e in zip(result, expected):
-                    assert (r == e).all()
 
 
         for dtype in ['int64','int32','float64','float32']:
@@ -345,15 +341,17 @@ class TestGroupBy(unittest.TestCase):
         with assert_produces_warning(PerformanceWarning):
             agg_func = lambda x: x.describe()
             result = grouped.agg(agg_func)
-            expected = Series([agg_func(group) for _, group in grouped], index=index)
-            for r, e in zip(result, expected):
-                assert (r == e).all()
         with assert_produces_warning(PerformanceWarning):
             agg_func = lambda x: x.index[:2]
             result = grouped.agg(agg_func)
-            expected = Series([agg_func(group) for _, group in grouped], index=index)
-            for r, e in zip(result, expected):
-                assert (r == e).all()
+        # test case prompted by #3788
+        df = DataFrame([[1, np.array([10, 20, 30])],
+                       [1, np.array([40, 50, 60])],
+                       [2, np.array([20, 30, 40])]],
+                       columns=['category', 'arraydata'])
+        grouped = df.groupby('category')
+        with assert_produces_warning(PerformanceWarning):
+            result = grouped.agg(sum)
 
     def test_agg_ser_multi_key(self):
         ser = self.df.C
