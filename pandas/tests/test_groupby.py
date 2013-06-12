@@ -347,8 +347,6 @@ class TestGroupBy(unittest.TestCase):
         with assert_produces_warning(PerformanceWarning):
             agg_func = lambda x: x.index[:2]
             result = grouped.agg(agg_func)
-            expected = Series([agg_func(group) for _, group in grouped],
-                              index=index)
         # test case prompted by #3788
         df = DataFrame([[1, np.array([10, 20, 30])],
                        [1, np.array([40, 50, 60])],
