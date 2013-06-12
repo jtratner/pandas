@@ -344,6 +344,7 @@ class TestGroupBy(unittest.TestCase):
         with assert_produces_warning(PerformanceWarning):
             agg_func = lambda x: x.index[:2]
             result = grouped.agg(agg_func)
+    def test_aa_earlier_test_case(self):
         # test case prompted by #3788
         df = DataFrame([[1, np.array([10, 20, 30])],
                        [1, np.array([40, 50, 60])],
