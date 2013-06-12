@@ -351,8 +351,6 @@ class TestGroupBy(unittest.TestCase):
             result = grouped.agg(agg_func)
             expected = Series([agg_func(group) for _, group in grouped],
                               index=index)
-            for r, e in zip(result, expected):
-                assert (r == e).all()
         # test case prompted by #3788
         df = DataFrame([[1, np.array([10, 20, 30])],
                        [1, np.array([40, 50, 60])],
