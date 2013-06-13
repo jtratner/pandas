@@ -51,22 +51,22 @@ class TestExpressions(unittest.TestCase):
     #TODO: add test for Panel
     #TODO: add tests for binary operations
     @nose.tools.nottest
-    def run_arithmetic_test(self, df, assert_func, check_dtype=False):
+    def run_arithmetic_test(self, df, other, assert_func, check_dtype=False):
         expr._MIN_ELEMENTS = 0
-        operations = ['add', 'sub', 'mul','mod','truediv','floordiv','pow']
+        operations = ['add', 'sub', 'mul', 'mod', 'truediv', 'floordiv', 'pow']
         if not py3compat.PY3:
             operations.append('div')
         for arith in operations:
             op = getattr(operator, arith)
             expr.set_use_numexpr(False)
-            expected = op(df, df)
+            expected = op(df, other)
             expr.set_use_numexpr(True)
-            result = op(df, df)
+            result = op(df, other)
             try:
                 if check_dtype:
                     if arith == 'div':
                         assert expected.dtype.kind == df.dtype.kind
-                    if arith == 'truediv':
+                    if arith  == 'truediv':
                         assert expected.dtype.kind == 'f'
                 assert_func(expected, result)
             except Exception:
@@ -74,24 +74,24 @@ class TestExpressions(unittest.TestCase):
                 raise
 
     def test_integer_arithmetic(self):
-        self.run_arithmetic_test(self.integer, assert_frame_equal)
-        self.run_arithmetic_test(self.integer.icol(0), assert_series_equal,
+        self.run_arithmetic_test(self.integer, self.integer, assert_frame_equal)
+        self.run_arithmetic_test(self.integer.icol(0), self.integer.icol(0), assert_series_equal,
                                  check_dtype=True)
 
     def test_float_arithemtic(self):
-        self.run_arithmetic_test(self.frame, assert_frame_equal)
-        self.run_arithmetic_test(self.frame.icol(0), assert_series_equal,
+        self.run_arithmetic_test(self.frame, self.frame, assert_frame_equal)
+        self.run_arithmetic_test(self.frame.icol(0), self.frame.icol(0), assert_series_equal,
                                 check_dtype=True)
 
     def test_mixed_arithmetic(self):
-        self.run_arithmetic_test(self.mixed, assert_frame_equal)
+        self.run_arithmetic_test(self.mixed, self.mixed, assert_frame_equal)
         for col in self.mixed.columns:
-            self.run_arithmetic_test(self.mixed[col], assert_series_equal)
+            self.run_arithmetic_test(self.mixed[col], self.mixed[col], assert_series_equal)
 
     def test_integer_with_zeros(self):
         self.integer *= np.random.randint(0, 2, size=np.shape(self.integer))
-        self.run_arithmetic_test(self.integer, assert_frame_equal)
-        self.run_arithmetic_test(self.integer.icol(0), assert_series_equal)
+        self.run_arithmetic_test(self.integer, self.integer, assert_frame_equal)
+        self.run_arithmetic_test(self.integer.icol(0), self.integer.icol(0), assert_series_equal)
 
     def test_invalid(self):
 
