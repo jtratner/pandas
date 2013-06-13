@@ -51,47 +51,61 @@ class TestExpressions(unittest.TestCase):
     #TODO: add test for Panel
     #TODO: add tests for binary operations
     @nose.tools.nottest
-    def run_arithmetic_test(self, df, other, assert_func, check_dtype=False):
+    def run_arithmetic_test(self, df, other, assert_func, check_dtype=False, test_flex=False):
+        """
+        tests solely that the result is the same whether or not numexpr is enabled.
+        Need to test whether the function does the correct thing elsewhere.
+        """
         expr._MIN_ELEMENTS = 0
         operations = ['add', 'sub', 'mul', 'mod', 'truediv', 'floordiv', 'pow']
         if not py3compat.PY3:
             operations.append('div')
         for arith in operations:
-            op = getattr(operator, arith)
+            if test_flex:
+                op = getattr(df, arith)
+            else:
+                op = getattr(operator, arith)
             expr.set_use_numexpr(False)
             expected = op(df, other)
             expr.set_use_numexpr(True)
             result = op(df, other)
             try:
-                if check_dtype:
-                    if arith == 'div':
-                        assert expected.dtype.kind == df.dtype.kind
-                    if arith  == 'truediv':
-                        assert expected.dtype.kind == 'f'
+                # if check_dtype:
+                #     if arith == 'div':
+                #         assert expected.dtype.kind == result.dtype.kind
+                #     if arith  == 'truediv':
+                #         assert result.dtype.kind == 'f'
                 assert_func(expected, result)
             except Exception:
-                print("Failed test with operator %r" % op.__name__)
+                print("Failed test with func %r" % op)
+                print("test_flex was %r" % test_flex)
                 raise
 
+    def run_frame(self, df, other, **kwargs):
+        self.run_arithmetic_test(df, other, assert_frame_equal, test_flex=False, **kwargs)
+        self.run_arithmetic_test(df, other, assert_frame_equal, test_flex=True, **kwargs)
+
+    def run_series(self, ser, other, **kwargs):
+        self.run_arithmetic_test(ser, other, assert_series_equal, test_flex=False, **kwargs)
+        self.run_arithmetic_test(ser, other, assert_almost_equal, test_flex=True, **kwargs)
+
     def test_integer_arithmetic(self):
-        self.run_arithmetic_test(self.integer, self.integer, assert_frame_equal)
-        self.run_arithmetic_test(self.integer.icol(0), self.integer.icol(0), assert_series_equal,
-                                 check_dtype=True)
+        self.run_frame(self.integer, self.integer)
+        self.run_series(self.integer.icol(0), self.integer.icol(0))
 
     def test_float_arithemtic(self):
-        self.run_arithmetic_test(self.frame, self.frame, assert_frame_equal)
-        self.run_arithmetic_test(self.frame.icol(0), self.frame.icol(0), assert_series_equal,
-                                check_dtype=True)
+        self.run_frame(self.frame, self.frame)
+        self.run_series(self.frame.icol(0), self.frame.icol(0))
 
     def test_mixed_arithmetic(self):
-        self.run_arithmetic_test(self.mixed, self.mixed, assert_frame_equal)
+        self.run_frame(self.mixed, self.mixed)
         for col in self.mixed.columns:
-            self.run_arithmetic_test(self.mixed[col], self.mixed[col], assert_series_equal)
+            self.run_series(self.mixed[col], self.mixed[col])
 
     def test_integer_with_zeros(self):
-        self.integer *= np.random.randint(0, 2, size=np.shape(self.integer))
-        self.run_arithmetic_test(self.integer, self.integer, assert_frame_equal)
-        self.run_arithmetic_test(self.integer.icol(0), self.integer.icol(0), assert_series_equal)
+        integer = self.integer * np.random.randint(0, 2, size=np.shape(self.integer))
+        self.run_frame(integer, integer)
+        self.run_series(integer.icol(0), integer.icol(0))
 
     def test_invalid(self):
 
