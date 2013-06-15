@@ -56,7 +56,7 @@ _SHOW_WARNINGS = True
 # Wrapper function for Series arithmetic methods
 
 
-def _arith_method(op, name, str_rep=None, fill_zeros=None, **eval_kwargs):
+def _arith_method(op, name, str_rep=None, fill_zeros=None, default_axis=None, **eval_kwargs):
     """
     Wrapper function for Series arithmetic operations, to avoid
     code duplication.
@@ -187,8 +187,9 @@ def _arith_method(op, name, str_rep=None, fill_zeros=None, **eval_kwargs):
     wrapper.__name__ = name
     return wrapper
 
-
-def _comp_method(op, name):
+# Would it make sense to have this use numexpr instead?
+# Should frame use vec_compare?
+def _comp_method(op, name, str_rep=None):
     """
     Wrapper function for Series arithmetic operations, to avoid
     code duplication.
@@ -244,7 +245,7 @@ def _comp_method(op, name):
     return wrapper
 
 
-def _bool_method(op, name):
+def _bool_method(op, name, str_rep=None):
     """
     Wrapper function for Series arithmetic operations, to avoid
     code duplication.
@@ -309,8 +310,7 @@ def _maybe_match_name(a, b):
         name = a.name
     return name
 
-
-def _flex_method(op, name):
+def _flex_method(op, name, str_rep=None, default_axis=None, fill_zeros=None, **eval_kwargs):
     doc = """
     Binary operator %s with support to substitute a fill_value for missing data
     in one of the inputs
@@ -329,18 +329,35 @@ def _flex_method(op, name):
     -------
     result : Series
     """ % name
+    # copied directly from _arith_method above...we'll see whether this works
+    def na_op(x, y):
+        try:
+            result = expressions.evaluate(op, str_rep, x, y, raise_on_error=True, **eval_kwargs)
+        except TypeError:
+            result = pa.empty(len(x), dtype=x.dtype)
+            if isinstance(y, pa.Array):
+                mask = notnull(x) & notnull(y)
+                result[mask] = op(x[mask], y[mask])
+            else:
+                mask = notnull(x)
+                result[mask] = op(x[mask], y)
 
+            result, changed = com._maybe_upcast_putmask(result,-mask,pa.NA)
+
+        # handles discrepancy between numpy and numexpr on division/mod by 0
+        result = com._fill_zeros(result,y,fill_zeros)
+        return result
     @Appender(doc)
     def f(self, other, level=None, fill_value=None):
         if isinstance(other, Series):
-            return self._binop(other, op, level=level, fill_value=fill_value)
+            return self._binop(other, na_op, level=level, fill_value=fill_value)
         elif isinstance(other, (pa.Array, list, tuple)):
             if len(other) != len(self):
                 raise ValueError('Lengths must be equal')
             return self._binop(Series(other, self.index), op,
                                level=level, fill_value=fill_value)
         else:
-            return Series(op(self.values, other), self.index,
+            return Series(na_op(self.values, other), self.index,
                           name=self.name)
 
     f.__name__ = name
@@ -1252,38 +1269,6 @@ class Series(pa.Array, generic.PandasObject):
     if py3compat.PY3:  # pragma: no cover
         items = iteritems
 
-    #----------------------------------------------------------------------
-    #   Arithmetic operators
-
-    __add__ = _arith_method(operator.add, '__add__', '+')
-    __sub__ = _arith_method(operator.sub, '__sub__', '-')
-    __mul__ = _arith_method(operator.mul, '__mul__', '*')
-    __truediv__ = _arith_method(operator.truediv, '__truediv__', '/', truediv=True, fill_zeros=np.inf)
-    # numexpr produces a different value when dividing by zero, so can't use
-    # floordiv speed up (yet)
-    # __floordiv__ = _arith_method(operator.floordiv, '__floordiv__', '//', fill_zeros=np.inf)
-    __floordiv__ = _arith_method(operator.floordiv, '__floordiv__', fill_zeros=np.inf)
-    __pow__ = _arith_method(operator.pow, '__pow__', '**')
-    # Causes a floating point exception in the tests when numexpr enabled, so for now no speedup
-    # __mod__ = _arith_method(operator.mod, '__mod__', '%', fill_zeros=np.nan)
-    __mod__ = _arith_method(operator.mod, '__mod__', fill_zeros=np.nan)
-    # TODO: add a `flip` method so you can speed up both directions
-    __radd__ = _arith_method(_radd_compat, '__add__')
-    __rmul__ = _arith_method(operator.mul, '__mul__')
-    __rsub__ = _arith_method(lambda x, y: y - x, '__sub__')
-    __rtruediv__ = _arith_method(lambda x, y: y / x, '__truediv__', fill_zeros=np.inf)
-    __rfloordiv__ = _arith_method(lambda x, y: y // x, '__floordiv__', fill_zeros=np.inf)
-    __rpow__ = _arith_method(lambda x, y: y ** x, '__pow__')
-    __rmod__ = _arith_method(lambda x, y: y % x, '__mod__', fill_zeros=np.nan)
-
-    # comparisons
-    __gt__ = _comp_method(operator.gt, '__gt__')
-    __ge__ = _comp_method(operator.ge, '__ge__')
-    __lt__ = _comp_method(operator.lt, '__lt__')
-    __le__ = _comp_method(operator.le, '__le__')
-    __eq__ = _comp_method(operator.eq, '__eq__')
-    __ne__ = _comp_method(operator.ne, '__ne__')
-
     # inversion
     def __neg__(self):
         arr = operator.neg(self.values)
@@ -1292,26 +1277,6 @@ class Series(pa.Array, generic.PandasObject):
     def __invert__(self):
         arr = operator.inv(self.values)
         return Series(arr, self.index, name=self.name)
-
-    # binary logic
-    __or__ = _bool_method(operator.or_, '__or__')
-    __and__ = _bool_method(operator.and_, '__and__')
-    __xor__ = _bool_method(operator.xor, '__xor__')
-
-    # Inplace operators
-    __iadd__ = __add__
-    __isub__ = __sub__
-    __imul__ = __mul__
-    __itruediv__ = __truediv__
-    __ifloordiv__ = __floordiv__
-    __ipow__ = __pow__
-
-    # Python 2 division operators
-    if not py3compat.PY3:
-        __div__ = _arith_method(operator.div, '__div__', '/',
-                                truediv=False, fill_zeros=np.inf)
-        __rdiv__ = _arith_method(lambda x, y: y / x, '__div__', fill_zeros=np.inf)
-        __idiv__ = __div__
 
     #----------------------------------------------------------------------
     # unbox reductions
@@ -2128,6 +2093,7 @@ class Series(pa.Array, generic.PandasObject):
         name = _maybe_match_name(self, other)
         return Series(result, index=new_index, name=name)
 
+<<<<<<< HEAD
     add = _flex_method(operator.add, 'add')
     sub = _flex_method(operator.sub, 'subtract')
     mul = _flex_method(operator.mul, 'multiply')
@@ -2142,6 +2108,8 @@ class Series(pa.Array, generic.PandasObject):
     mod = _flex_method(operator.mod, 'modulo')
     pow = _flex_method(operator.pow, 'pow')
 
+=======
+>>>>>>> CLN: Move arithmetic methods into core/generic.py
     def combine(self, other, func, fill_value=nan):
         """
         Perform elementwise binary operation on two Series using given function
@@ -3583,3 +3551,8 @@ class TimeSeries(Series):
             freq = self.index.freqstr or self.index.inferred_freq
         new_index = self.index.to_period(freq=freq)
         return Series(new_values, index=new_index, name=self.name)
+
+# Add arithmetic!
+Series._add_flex_arithmetic_methods(_flex_method, radd_func=_radd_compat)
+Series._add_special_arithmetic_methods(_arith_method, radd_func=_radd_compat, comp_method=_comp_method,
+                                       bool_method=_bool_method)
