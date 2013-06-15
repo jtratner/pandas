@@ -2703,7 +2703,7 @@ def hashable_class_factory(klass, hash_func=None):
             self._index = index
 
         def __eq__(self, other):
-            if issubclass(other, klass):
+            if isinstance(other, klass):
                 return (self.values == other.values).all()
             else:
                 return False
@@ -2718,7 +2718,7 @@ def hashable_class_factory(klass, hash_func=None):
         def asindex(self):
             return self._index
 
-    HashableClass = type("Hashable{klass}".format(klass=klass.__name__), (HashableIndexMixin, klass))
+    HashableClass = type("Hashable{klass}".format(klass=klass.__name__), (HashableIndexMixin, klass), {})
 
     def ashashable(self):
         """convert {klass} to a hashable type that
