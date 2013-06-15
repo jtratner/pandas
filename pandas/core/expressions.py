@@ -84,12 +84,9 @@ def _evaluate_numexpr(op, op_str, a, b, raise_on_error = False, **eval_kwargs):
 
     if _can_use_numexpr(op, op_str, a, b, 'evaluate'):
         try:
-            a_value, b_value = a, b
-            if hasattr(a_value,'values'):
-                a_value = a_value.values
-            if hasattr(b_value,'values'):
-                b_value = b_value.values
-            result = ne.evaluate('a_value %s b_value' % op_str, 
+            a_value = getattr(a, "values", a)
+            b_value = getattr(b, "values", b)
+            result = ne.evaluate('a_value %s b_value' % op_str,
                                  local_dict={ 'a_value' : a_value, 
                                               'b_value' : b_value }, 
                                  casting='safe', **eval_kwargs)
@@ -114,13 +111,9 @@ def _where_numexpr(cond, a, b, raise_on_error = False):
     if _can_use_numexpr(None, 'where', a, b, 'where'):
 
         try:
-            cond_value, a_value, b_value = cond, a, b
-            if hasattr(cond_value,'values'):
-                cond_value = cond_value.values
-            if hasattr(a_value,'values'):
-                a_value = a_value.values
-            if hasattr(b_value,'values'):
-                b_value = b_value.values
+            cond_value = getattr(cond, "values", cond)
+            a_value = getattr(a, "values", a)
+            b_value = getattr(b, "values", b)
             result = ne.evaluate('where(cond_value,a_value,b_value)',
                                  local_dict={ 'cond_value' : cond_value,
                                               'a_value' : a_value, 

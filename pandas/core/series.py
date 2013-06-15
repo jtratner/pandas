@@ -2092,24 +2092,6 @@ class Series(pa.Array, generic.PandasObject):
         result = func(this_vals, other_vals)
         name = _maybe_match_name(self, other)
         return Series(result, index=new_index, name=name)
-
-<<<<<<< HEAD
-    add = _flex_method(operator.add, 'add')
-    sub = _flex_method(operator.sub, 'subtract')
-    mul = _flex_method(operator.mul, 'multiply')
-    try:
-        div = _flex_method(operator.div, 'divide')
-    except AttributeError:  # pragma: no cover
-        # Python 3
-        div = _flex_method(operator.truediv, 'divide')
-    mod = _flex_method(operator.mod, 'mod')
-    truediv = _flex_method(operator.truediv, 'true division')
-    floordiv = _flex_method(operator.floordiv, 'floor division')
-    mod = _flex_method(operator.mod, 'modulo')
-    pow = _flex_method(operator.pow, 'pow')
-
-=======
->>>>>>> CLN: Move arithmetic methods into core/generic.py
     def combine(self, other, func, fill_value=nan):
         """
         Perform elementwise binary operation on two Series using given function
