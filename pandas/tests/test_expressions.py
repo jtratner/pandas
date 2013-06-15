@@ -10,12 +10,13 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 import pandas as pan
-from pandas.core.api import DataFrame, Series, notnull, isnull
+from pandas.core.api import Panel, DataFrame, Series, notnull, isnull
 from pandas.core import expressions as expr
 
 from pandas.util.testing import (assert_almost_equal,
                                  assert_series_equal,
-                                 assert_frame_equal)
+                                 assert_frame_equal,
+                                 assert_panel_equal)
 from pandas.util import py3compat
 
 import pandas.util.testing as tm
@@ -31,6 +32,9 @@ _frame2 = DataFrame(np.random.randn(100, 4),   columns = list('ABCD'), dtype='fl
 _mixed  = DataFrame({ 'A' : _frame['A'].copy(), 'B' : _frame['B'].astype('float32'), 'C' : _frame['C'].astype('int64'), 'D' : _frame['D'].astype('int32') })
 _mixed2 = DataFrame({ 'A' : _frame2['A'].copy(), 'B' : _frame2['B'].astype('float32'), 'C' : _frame2['C'].astype('int64'), 'D' : _frame2['D'].astype('int32') })
 _integer  = DataFrame(np.random.randint(1, 100, size=(10001, 4)), columns = list('ABCD'), dtype='int64')
+_frame_panel = Panel(dict(ItemA = _frame.copy(), ItemB = (_frame.copy() + 3), ItemC=_frame.copy(), ItemD=_frame.copy()))
+_integer_panel = Panel(dict(ItemA = _integer, ItemB = (_integer+34).astype('int64')))
+_mixed_panel = Panel(dict(ItemA = _mixed, ItemB = (_mixed+3)))
 
 class TestExpressions(unittest.TestCase):
 
@@ -89,23 +93,40 @@ class TestExpressions(unittest.TestCase):
         self.run_arithmetic_test(ser, other, assert_series_equal, test_flex=False, **kwargs)
         self.run_arithmetic_test(ser, other, assert_almost_equal, test_flex=True, **kwargs)
 
+    def run_panel(self, panel, other, **kwargs):
+        self.run_arithmetic_test(panel, other, assert_panel_equal, test_flex=False, **kwargs)
+        # self.run_arithmetic_test(panel, other, assert_panel_equal, test_flex=True, **kwargs)
+
     def test_integer_arithmetic(self):
         self.run_frame(self.integer, self.integer)
         self.run_series(self.integer.icol(0), self.integer.icol(0))
 
+    def test_integer_panel(self):
+        self.run_panel(_integer_panel, np.random.randint(1, 100))
+
     def test_float_arithemtic(self):
         self.run_frame(self.frame, self.frame)
         self.run_series(self.frame.icol(0), self.frame.icol(0))
+
+    def test_float_panel(self):
+        self.run_panel(_frame_panel, np.random.randn() + 0.1)
 
     def test_mixed_arithmetic(self):
         self.run_frame(self.mixed, self.mixed)
         for col in self.mixed.columns:
             self.run_series(self.mixed[col], self.mixed[col])
 
+    def test_mixed_panel(self):
+        self.run_panel(_mixed_panel, np.random.randint(1, 100))
+
     def test_integer_with_zeros(self):
         integer = self.integer * np.random.randint(0, 2, size=np.shape(self.integer))
         self.run_frame(integer, integer)
         self.run_series(integer.icol(0), integer.icol(0))
+
+    def test_integer_panel_with_zeros(self):
+        # this probably isn't the greatest test, but whatever
+        self.run_panel(_mixed_panel, 0)
 
     def test_invalid(self):
 
