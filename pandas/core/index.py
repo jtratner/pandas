@@ -11,7 +11,7 @@ import pandas.index as _index
 from pandas.lib import Timestamp
 
 from pandas.util.decorators import cache_readonly
-from pandas.core.common import isnull
+from pandas.core.common import isnull, bind_method
 import pandas.core.common as com
 from pandas.util import py3compat
 from pandas.core.config import get_option
@@ -2687,6 +2687,53 @@ class MultiIndex(Index):
         names = self.names if self.names == other.names else None
         return MultiIndex.from_tuples(joined, names=names)
 
+
+def hashable_class_factory(klass, hash_func=None):
+    """Creates Hashable Class for given Index type
+    and adds `ashashable` method to the Index"""
+
+    class HashableIndexMixin(object):
+        """
+        Implements hashing methods...note that this is
+        very crude, and *only* works if it's mixed into a parent
+        class that is a subclass of (or just is) an index
+        """
+
+        def __init__(self, index):
+            self._index = index
+
+        def __eq__(self, other):
+            if issubclass(other, klass):
+                return (self.values == other.values).all()
+            else:
+                return False
+
+        if hash_func:
+            __hash__ = hash_func
+        else:
+            def __hash__(self):
+                return hash(str(self))
+
+        # should this be a property??
+        def asindex(self):
+            return self._index
+
+    HashableClass = type("Hashable{klass}".format(klass=klass.__name__), (HashableIndexMixin, klass))
+
+    def ashashable(self):
+        """convert {klass} to a hashable type that
+         can be used for key/value lookup
+        """
+        return HashableClass(self)
+
+    ashashable.__doc__ = ashashable.__doc__.format(klass=klass.__name__)
+    bind_method(klass, "ashashable", ashashable)
+
+    return HashableClass
+
+HashableIndex = hashable_class_factory(Index)
+HashableInt64Index = hashable_class_factory(Int64Index)
+HashableMultiIndex = hashable_class_factory(MultiIndex)
 
 # For utility purposes
 
