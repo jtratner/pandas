@@ -180,7 +180,7 @@ def _get_hist_yahoo(sym=None, start=None, end=None, retry_count=3,
             return rs
 
         time.sleep(pause)
-
+    # FIXME: Decide whether to put this under a common DataError
     raise Exception("after %d tries, Yahoo did not "
                     "return a 200 for url %s" % (pause, url))
 
@@ -215,7 +215,7 @@ def _get_hist_google(sym=None, start=None, end=None, retry_count=3,
             return rs
 
         time.sleep(pause)
-
+    # FIXME: Decide whether to put this under a common DataError or something...
     raise Exception("after %d tries, Google did not "
                     "return a 200 for url %s" % (pause, url))
 
@@ -481,6 +481,7 @@ def get_data_fred(name=None, start=dt.datetime(2010, 1, 1),
         return data.truncate(start, end)
     except KeyError:
         if data.ix[3].name[7:12] == 'Error':
+            # FIXME: Decide whether to put this under a DataError or something
             raise Exception("Failed to get the data. "
                             "Check that {} is valid FRED "
                             "series.".format(name))
