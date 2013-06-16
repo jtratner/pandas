@@ -1020,6 +1020,7 @@ class BlockManager(object):
         value = _ensure_index(value)
 
         if check_axis and len(value) != len(cur_axis):
+            # FIXME: Change from Exception - maybe PandasError?
             raise Exception('Length mismatch (%d vs %d)'
                             % (len(value), len(cur_axis)))
 
@@ -1777,6 +1778,7 @@ class BlockManager(object):
     def insert(self, loc, item, value, allow_duplicates=False):
 
         if not allow_duplicates and item in self.items:
+            # FIXME: Decide which kind of exception should go here - maybe KeyError? ValueError?
             raise Exception('cannot insert %s, already exists' % item)
 
         try:
@@ -2065,6 +2067,7 @@ class BlockManager(object):
            indexer = _maybe_convert_indices(indexer, n)
 
         if ((indexer == -1) | (indexer >= n)).any():
+            # FIXME: Change from Exception and see if bubbles up to user...
             raise Exception('Indices must be nonzero and less than '
                             'the axis length')
 
