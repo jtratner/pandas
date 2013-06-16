@@ -32,6 +32,7 @@ def create_nd_panel_factory(klass_name, axis_orders, axis_slices, slicer, axis_a
         try:
             slicer = getattr(pandas, slicer)
         except:
+            # FIXME: Change from Exception - looks like this is internal, so maybe PandasError?
             raise Exception("cannot create this slicer [%s]" % slicer)
 
     # build the klass
