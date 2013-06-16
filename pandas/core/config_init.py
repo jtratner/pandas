@@ -192,6 +192,7 @@ def mpl_style_cb(key):
     if 'matplotlib' not in sys.modules.keys():
         if not(val): # starting up, we get reset to None
             return val
+        # FIXME: Change Exception - maybe ImportError??
         raise Exception("matplotlib has not been imported. aborting")
 
     import matplotlib.pyplot as plt
