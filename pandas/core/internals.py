@@ -1573,7 +1573,7 @@ class BlockManager(object):
         new_blocks = []
         if len(self.blocks) > 1:
             if not copy:
-                raise Exception('cannot get view of mixed-type or '
+                raise TypeError('cannot get view of mixed-type or '
                                 'non-consolidated DataFrame')
             for blk in self.blocks:
                 newb = make_block(blk.values[slicer], 
@@ -1606,7 +1606,7 @@ class BlockManager(object):
             return result
 
         if not copy:
-            raise Exception('cannot get view of mixed-type or '
+            raise TypeError('cannot get view of mixed-type or '
                             'non-consolidated DataFrame')
 
         dtype = _interleaved_dtype(self.blocks)
@@ -2101,7 +2101,7 @@ class BlockManager(object):
         to_rename = self.items.intersection(other.items)
         if len(to_rename) > 0:
             if not lsuffix and not rsuffix:
-                raise Exception('columns overlap: %s' % to_rename)
+                raise ValueError('columns overlap: %s' % to_rename)
 
             def lrenamer(x):
                 if x in to_rename:
@@ -2390,7 +2390,7 @@ def _stack_arrays(tuples, ref_items, dtype):
     else:
         items = _ensure_index([ n for n in names if n in ref_items ])
         if len(items) != len(stacked):
-            raise Exception("invalid names passed _stack_arrays")
+            raise ValueError("invalid names passed _stack_arrays")
 
     return items, stacked, placement
 
