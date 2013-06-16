@@ -2217,6 +2217,7 @@ class Series(pa.Array, generic.PandasObject):
 
         if (true_base is not None and
                 (true_base.ndim != 1 or true_base.shape != self.shape)):
+            # FIXME: Change this to some other Exception - maybe TypeError?
             raise Exception('This Series is a view of some other array, to '
                             'sort in-place you must create a copy')
 
