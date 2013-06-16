@@ -921,6 +921,7 @@ class _Concatenator(object):
             keys = clean_keys
 
         if len(objs) == 0:
+            #TODO: This looks like an internal error - possible candidate for PandasError?
             raise Exception('All objects passed were None')
 
         # consolidate data
