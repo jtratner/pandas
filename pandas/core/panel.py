@@ -431,6 +431,7 @@ class Panel(NDFrame):
 
     def _compare_constructor(self, other, func):
         if not self._indexed_same(other):
+            # FIXME: Change from Exception - maybe TypeError?
             raise Exception('Can only compare identically-labeled '
                             'same type objects')
 
