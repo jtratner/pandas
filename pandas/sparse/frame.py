@@ -740,6 +740,7 @@ class SparseDataFrame(DataFrame):
 
         if len(intersection) > 0:
             if not lsuffix and not rsuffix:
+                # FIXME: Change to appropriate exception type - maybe PandasError?
                 raise Exception('columns overlap: %s' % intersection)
 
             def lrenamer(x):
