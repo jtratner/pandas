@@ -384,6 +384,7 @@ def inferTimeRule(index):
 
     freq = DatetimeIndex(index).inferred_freq
     if freq is None:
+        #TODO: Determine whether this should be a different kind of Exception. PandasError?
         raise Exception('Unable to infer time rule')
 
     offset = to_offset(freq)
