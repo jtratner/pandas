@@ -93,6 +93,7 @@ class SparsePanel(Panel):
         # do we want to fill missing ones?
         for item in items:
             if item not in clean_frames:
+                # FIXME: Maybe this should be a KeyError?
                 raise Exception('column %s not found in data' % item)
 
         self._items = items

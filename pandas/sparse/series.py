@@ -278,6 +278,7 @@ class SparseSeries(SparseArray, Series):
         except KeyError:
             if isinstance(key, (int, np.integer)):
                 return self._get_val_at(key)
+            # FIXME: Why isn't this a KeyError too?
             raise Exception('Requested index not in this series!')
 
         except TypeError:

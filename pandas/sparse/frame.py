@@ -340,6 +340,7 @@ class SparseDataFrame(DataFrame):
 
     def _set_columns(self, cols):
         if len(cols) != len(self._series):
+            # FIXME: Decide what this should be - maybe PandasError?
             raise Exception('Columns length %d did not match data %d!' %
                             (len(cols), len(self._series)))
 
@@ -353,6 +354,7 @@ class SparseDataFrame(DataFrame):
             for i, col in enumerate(existing):
                 new_col = cols[i]
                 if new_col in new_series:  # pragma: no cover
+                    # FIXME: Decide what this should be - maybe PandasError?
                     raise Exception('Non-unique mapping!')
                 new_series[new_col] = self._series.get(col)
 
@@ -656,6 +658,7 @@ class SparseDataFrame(DataFrame):
         for col in self.columns:
             new_col = mapper(col)
             if new_col in new_series:  # pragma: no cover
+                #FIXME: Decide what this should be - maybe PandasError?
                 raise Exception('Non-unique mapping!')
             new_series[new_col] = self[col]
             new_columns.append(new_col)
