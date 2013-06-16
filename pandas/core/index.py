@@ -841,6 +841,7 @@ class Index(np.ndarray):
             return this.get_indexer(target, method=method, limit=limit)
 
         if not self.is_unique:
+            # FIXME: Change from Exception to something else
             raise Exception('Reindexing only valid with uniquely valued Index '
                             'objects')
 
@@ -1593,11 +1594,13 @@ class MultiIndex(Index):
         try:
             count = self.names.count(level)
             if count > 1:
+                # FIXME: Change Exception - probably should be ValueError?? or PandasError?
                 raise Exception('The name %s occurs multiple times, use a '
                                 'level number' % level)
             level = self.names.index(level)
         except ValueError:
             if not isinstance(level, int):
+                # FIXME: Change Exception - probably should be KeyError
                 raise Exception('Level %s not found' % str(level))
             elif level < 0:
                 level += self.nlevels
@@ -1847,6 +1850,7 @@ class MultiIndex(Index):
         index : MultiIndex
         """
         if len(tuples) == 0:
+            # FIXME: Change from Exception - maybe ValueError?
             raise Exception('Cannot infer number of levels from empty list')
 
         if isinstance(tuples, np.ndarray):
@@ -2180,6 +2184,7 @@ class MultiIndex(Index):
             return np.ones(len(target_index)) * -1
 
         if not self.is_unique:
+            # FIXME: Change from Exception - maybe PandasError?
             raise Exception('Reindexing only valid with uniquely valued Index '
                             'objects')
 
