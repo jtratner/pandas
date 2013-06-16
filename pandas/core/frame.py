@@ -1332,6 +1332,7 @@ class DataFrame(NDFrame):
             raise AssertionError('Must have 2-level MultiIndex')
 
         if not self.index.is_unique:
+            # FIXME: Change bare Exception
             raise Exception("Can't convert non-uniquely indexed "
                             "DataFrame to Panel")
 
@@ -3909,6 +3910,7 @@ class DataFrame(NDFrame):
 
     def _compare_frame(self, other, func, str_rep):
         if not self._indexed_same(other):
+            # FIXME: Change Exception - probably PandasError?
             raise Exception('Can only compare identically-labeled '
                             'DataFrame objects')
 
@@ -4590,6 +4592,7 @@ class DataFrame(NDFrame):
             if isinstance(other, dict):
                 other = Series(other)
             if other.name is None and not ignore_index:
+                #FIXME: Change Exception - probably TypeError
                 raise Exception('Can only append a Series if '
                                 'ignore_index=True')
 
@@ -5287,6 +5290,7 @@ class DataFrame(NDFrame):
         elif axis_num == 1:
             return self.index
         else:
+            # FIXME: Change Exception - probably ValueError - maybe PandasError?
             raise Exception('Must have 0<= axis <= 1')
 
     def _get_numeric_data(self):
