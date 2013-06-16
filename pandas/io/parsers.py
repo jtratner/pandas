@@ -658,12 +658,15 @@ class ParserBase(object):
         self.header = kwds.get('header')
         if isinstance(self.header,(list,tuple,np.ndarray)):
             if kwds.get('as_recarray'):
-                raise Exception("cannot specify as_recarray when "
+                # TODO: Decide if this should be a PandasError instead? (i.e., does it bubble up to user?)
+                raise TypeError("cannot specify as_recarray when "
                                 "specifying a multi-index header")
             if kwds.get('usecols'):
+                # TODO: Decide if this should be a PandasError instead? (i.e., does it bubble up to user?)
                 raise Exception("cannot specify usecols when "
                                 "specifying a multi-index header")
             if kwds.get('names'):
+                # TODO: Decide if this should be a PandasError instead? (i.e., does it bubble up to user?)
                 raise Exception("cannot specify names when "
                                 "specifying a multi-index header")
 
@@ -671,6 +674,7 @@ class ParserBase(object):
             if self.index_col is not None:
                 if not (isinstance(self.index_col,(list,tuple,np.ndarray)) and all(
                         [ com.is_integer(i) for i in self.index_col ]) or com.is_integer(self.index_col)):
+                    # TODO: Decide if this should be a PandasError instead? (i.e., does it bubble up to user?)
                     raise Exception("index_col must only contain row numbers "
                                     "when specifying a multi-index header")
 
@@ -1194,6 +1198,7 @@ class PythonParser(ParserBase):
         self.pos = 0
 
         if kwds['usecols'] is not None:
+            # TODO: Decide if this should be a PandasError instead? (i.e., does it bubble up to user?)
             raise Exception("usecols not supported with engine='python'"
                             " or multicharacter separators (yet).")
 
@@ -1429,9 +1434,11 @@ class PythonParser(ParserBase):
 
             if names is not None:
                 if len(names) != len(columns[0]):
+                    # TODO: Decide if this should be a PandasError instead? (i.e., does it bubble up to user?)
                     raise Exception('Number of passed names did not match '
                                     'number of header fields in the file')
                 if len(columns) > 1:
+                    # TODO: Decide if this should be a PandasError instead? (i.e., does it bubble up to user?)
                     raise Exception('Cannot pass names with multi-index columns')
                 columns = [ names ]
 
@@ -1630,6 +1637,7 @@ class PythonParser(ParserBase):
                                 row_num = str(self.pos + rows)
                                 msg = ('EOF inside string starting with line '
                                        + row_num)
+                                # TODO: Decide if this should be a PandasError instead? (i.e., does it bubble up to user?)
                                 raise Exception(msg)
                             raise
             except StopIteration:
@@ -1660,6 +1668,7 @@ def _make_date_converter(date_parser=None, dayfirst=False):
             try:
                 result = date_parser(*date_cols)
                 if isinstance(result, datetime.datetime):
+                    # TODO: Decide if this should be a PandasError instead? (i.e., does it bubble up to user?)
                     raise Exception('scalar parser')
                 return result
             except Exception:
