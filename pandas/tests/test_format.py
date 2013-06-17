@@ -59,6 +59,12 @@ class TestDataFrameFormatting(unittest.TestCase):
     def tearDown(self):
         warnings.filters = self.warn_filters
 
+    def test_csv_format(self):
+        df = tm.makeCustomDataframe(10, 10, c_idx_nlevels=3, c_idx_names=True)
+        cols = df.columns
+        tm.assertRaisesRegexp(TypeError, "cols.*MultiIndex", df.to_csv,
+                              'p.csv', cols=cols[0:2], tupleize_cols=False)
+
     def test_repr_embedded_ndarray(self):
         arr = np.empty(10, dtype=[('err', object)])
         for i in range(len(arr)):
