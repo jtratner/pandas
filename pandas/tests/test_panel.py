@@ -20,8 +20,8 @@ from pandas.util.testing import (assert_panel_equal,
                                  assert_series_equal,
                                  assert_almost_equal,
                                  ensure_clean,
-                                 makeCustomDataframe as mkdf
-    )
+                                 makeCustomDataframe as mkdf,
+                                 assertRaisesRegexp)
 import pandas.core.panel as panelm
 import pandas.util.testing as tm
 
@@ -997,12 +997,14 @@ class TestPanel(unittest.TestCase, PanelTests, CheckIndexing,
         assert_frame_equal(result['ItemB'], ref.reindex(index=new_major))
 
         # raise exception put both major and major_axis
-        self.assertRaises(Exception, self.panel.reindex,
-                          major_axis=new_major, major=new_major)
+        assertRaisesRegexp(TypeError, 'mutually exclusive arguments', self.panel.reindex,
+                           major_axis=new_major, major=new_major)
 
         # minor
         new_minor = list(self.panel.minor_axis[:2])
         result = self.panel.reindex(minor=new_minor)
+        assertRaisesRegexp(TypeError, 'mutually exclusive arguments', self.panel.reindex, minor=new_minor,
+                           minor_axis=new_minor)
         assert_frame_equal(result['ItemB'], ref.reindex(columns=new_minor))
 
         result = self.panel.reindex(items=self.panel.items,
