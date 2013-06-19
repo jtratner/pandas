@@ -153,32 +153,6 @@ def h5_open(path, mode):
     return tables.openFile(path, mode)
     
     
-@contextmanager
-def get_store(path, mode='a', complevel=None, complib=None,
-              fletcher32=False):
-    """
-    Creates an HDFStore instance. This function can be used in a with statement
-
-    Parameters
-    ----------
-    same as HDFStore
-
-    Examples
-    --------
-    >>> with get_store('test.h5') as store:
-    >>>     store['foo'] = bar   # write to HDF5
-    >>>     bar = store['foo']   # retrieve
-    """
-    store = None
-    try:
-        store = HDFStore(path, mode=mode, complevel=complevel,
-                         complib=complib, fletcher32=False)
-        yield store
-    finally:
-        if store is not None:
-            store.close()
-
-
 ### interface to/from ###
 
 def to_hdf(path_or_buf, key, value, mode=None, complevel=None, complib=None, append=None, **kwargs):
@@ -227,6 +201,8 @@ class HDFStore(object):
     read and write but can be searched and manipulated more like an SQL
     table. See HDFStore.put for more information
 
+    To automatically close the store, you can use it in a with statement.
+
     Parameters
     ----------
     path : string
@@ -251,38 +227,58 @@ class HDFStore(object):
             in the store wherever possible
     fletcher32 : bool, default False
             If applying compression use the fletcher32 checksum
+    auto_open : bool, default True
+            Automatically call open on creation.
 
     Examples
     --------
+
+    You can use it in a with statement.
+    >>> with HDFStore('test.h5') as store:
+    ...     store['foo'] = bar # write to HDF5
+    ...     bar = store['foo'] # retrieve
+
+    Or you can close it explicitly yourself.
     >>> store = HDFStore('test.h5')
-    >>> store['foo'] = bar   # write to HDF5
-    >>> bar = store['foo']   # retrieve
+    >>> store['foo'] = bar
     >>> store.close()
     """
+    # default mode
+    _mode = 'a'
     _quiet = False
+    _DEFAULT_WARN = False
 
     def __init__(self, path, mode=None, complevel=None, complib=None,
-                 fletcher32=False):
+                 fletcher32=False, auto_open=True, warn=False):
         try:
             import tables as _
         except ImportError:  # pragma: no cover
             raise Exception('HDFStore requires PyTables')
 
         self._path = path
-        if mode is None:
-            mode = 'a'
-        self._mode = mode
+        if mode is not None:
+            self._mode = mode
         self._handle = None
         self._complevel = complevel
         self._complib = complib
         self._fletcher32 = fletcher32
         self._filters = None
-        self.open(mode=mode, warn=False)
+        self._DEFAULT_WARN = warn
+        if auto_open:
+            self.open(mode=mode, warn=warn)
 
     @property
     def root(self):
         """ return the root node """
         return self._handle.root
+
+    def __enter__(self):
+        # warn only if already open
+        self.open(warn=self._DEFAULT_WARN)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     def __getitem__(self, key):
         return self.get(key)
@@ -354,7 +350,7 @@ class HDFStore(object):
 
     iteritems = items
 
-    def open(self, mode='a', warn=True):
+    def open(self, mode=None, warn=True):
         """
         Open the file in the specified mode
 
@@ -363,7 +359,7 @@ class HDFStore(object):
         mode : {'a', 'w', 'r', 'r+'}, default 'a'
             See HDFStore docstring or tables.openFile for info about modes
         """
-        self._mode = mode
+        mode = self._mode = mode or self._mode
         if warn and mode == 'w':  # pragma: no cover
             while True:
                 response = raw_input("Re-opening as mode='w' will delete the "
@@ -928,6 +924,29 @@ class HDFStore(object):
         s.infer_axes()
         return s.read(**kwargs)
 
+
+    @classmethod
+    def get_store(cls, path, mode='a', complevel=None, complib=None,
+                  fletcher32=False):
+        """
+        Creates an HDFStore instance. This function can be used in a with statement
+
+        Parameters
+        ----------
+        same as HDFStore
+
+        Examples
+        --------
+        >>> with get_store('test.h5') as store:
+        >>>     store['foo'] = bar   # write to HDF5
+        >>>     bar = store['foo']   # retrieve
+        """
+        return cls(path, mode=mode, complevel=complevel,
+                             complib=complib, fletcher32=False,
+                             auto_open=False)
+
+get_store = HDFStore.get_store
+
 class TableIterator(object):
     """ define the iteration interface on a table
         
@@ -943,6 +962,8 @@ class TableIterator(object):
         auto_close : boolean, automatically close the store at the end of iteration,
             default is False
         kwargs : the passed kwargs
+
+        Note that if this is used as a contextmanager, it will auto-close.
         """
 
     def __init__(self, store, func, nrows, start=None, stop=None, chunksize=None, auto_close=False):
@@ -960,6 +981,12 @@ class TableIterator(object):
 
         self.chunksize = chunksize
         self.auto_close = auto_close
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self):
+        self.close()
 
     def __iter__(self):
         current = self.start
