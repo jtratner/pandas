@@ -50,7 +50,11 @@ API changes
         p / p
         p / 0
 
-  - Add ``squeeze`` keyword to ``groupby`` to allow reduction from
+  - All non-Index NDFrames (``Series``, ``DataFrame``, ``Panel``, ``Panel4D``,
+    ``SparsePanel``, etc.), now support the entire set of arithmetic operators
+    and arithmetic flex methods (add, sub, mul, pow, etc.). (:issue:`3765`)
+
+  - Add ``squeeze`` keyword to ``groupby`` to allow reduction from 
     DataFrame -> Series if groups are unique. This is a Regression from 0.10.1.
     We are reverting back to the prior behavior. This means groupby will return the
     same shaped objects whether the groups are unique or not. Revert this issue (:issue:`2893`)
