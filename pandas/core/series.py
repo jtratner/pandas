@@ -1294,37 +1294,6 @@ class Series(generic.NDFrame):
     if py3compat.PY3:  # pragma: no cover
         items = iteritems
 
-    #----------------------------------------------------------------------
-    #   Arithmetic operators
-
-    __add__ = _arith_method(operator.add, '__add__')
-    __sub__ = _arith_method(operator.sub, '__sub__')
-    __mul__ = _arith_method(operator.mul, '__mul__')
-    __truediv__ = _arith_method(
-        operator.truediv, '__truediv__', fill_zeros=np.inf)
-    __floordiv__ = _arith_method(
-        operator.floordiv, '__floordiv__', fill_zeros=np.inf)
-    __pow__ = _arith_method(operator.pow, '__pow__')
-    __mod__ = _arith_method(operator.mod, '__mod__', fill_zeros=np.nan)
-
-    __radd__ = _arith_method(_radd_compat, '__add__')
-    __rmul__ = _arith_method(operator.mul, '__mul__')
-    __rsub__ = _arith_method(lambda x, y: y - x, '__sub__')
-    __rtruediv__ = _arith_method(
-        lambda x, y: y / x, '__truediv__', fill_zeros=np.inf)
-    __rfloordiv__ = _arith_method(
-        lambda x, y: y // x, '__floordiv__', fill_zeros=np.inf)
-    __rpow__ = _arith_method(lambda x, y: y ** x, '__pow__')
-    __rmod__ = _arith_method(lambda x, y: y % x, '__mod__', fill_zeros=np.nan)
-
-    # comparisons
-    __gt__ = _comp_method(operator.gt, '__gt__')
-    __ge__ = _comp_method(operator.ge, '__ge__')
-    __lt__ = _comp_method(operator.lt, '__lt__')
-    __le__ = _comp_method(operator.le, '__le__')
-    __eq__ = _comp_method(operator.eq, '__eq__')
-    __ne__ = _comp_method(operator.ne, '__ne__', True)
-
     # inversion
     def __neg__(self):
         arr = operator.neg(self.values)
@@ -1333,26 +1302,6 @@ class Series(generic.NDFrame):
     def __invert__(self):
         arr = operator.inv(self.values)
         return self._constructor(arr, self.index, name=self.name)
-
-    # binary logic
-    __or__ = _bool_method(operator.or_, '__or__')
-    __and__ = _bool_method(operator.and_, '__and__')
-    __xor__ = _bool_method(operator.xor, '__xor__')
-
-    # Inplace operators
-    __iadd__ = __add__
-    __isub__ = __sub__
-    __imul__ = __mul__
-    __itruediv__ = __truediv__
-    __ifloordiv__ = __floordiv__
-    __ipow__ = __pow__
-
-    # Python 2 division operators
-    if not py3compat.PY3:
-        __div__ = _arith_method(operator.div, '__div__', fill_zeros=np.inf)
-        __rdiv__ = _arith_method(
-            lambda x, y: y / x, '__div__', fill_zeros=np.inf)
-        __idiv__ = __div__
 
     #----------------------------------------------------------------------
     # unbox reductions
@@ -2160,16 +2109,6 @@ class Series(generic.NDFrame):
         result = func(this_vals, other_vals)
         name = _maybe_match_name(self, other)
         return self._constructor(result, index=new_index, name=name)
-
-    add = _flex_method(operator.add, 'add')
-    sub = _flex_method(operator.sub, 'subtract')
-    mul = _flex_method(operator.mul, 'multiply')
-    try:
-        div = _flex_method(operator.div, 'divide')
-    except AttributeError:  # pragma: no cover
-        # Python 3
-        div = _flex_method(operator.truediv, 'divide')
-    mod = _flex_method(operator.mod, 'mod')
 
     def combine(self, other, func, fill_value=nan):
         """
@@ -3504,3 +3443,9 @@ import pandas.tools.plotting as _gfx
 
 Series.plot = _gfx.plot_series
 Series.hist = _gfx.hist_series
+# Add arithmetic!
+Series._add_flex_arithmetic_methods(_flex_method, radd_func=_radd_compat,
+                                    flex_comp_method=_comp_method)
+Series._add_special_arithmetic_methods(_arith_method, radd_func=_radd_compat,
+                                       comp_method=_comp_method,
+                                       bool_method=_bool_method)
