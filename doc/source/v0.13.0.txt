@@ -9,6 +9,10 @@ enhancements along with a large number of bug fixes.
 API changes
 ~~~~~~~~~~~
 
+  - All non-Index NDFrames (``Series``, ``DataFrame``, ``Panel``, ``Panel4D``,
+    ``SparsePanel``, etc.), now support the entire set of arithmetic operators
+    and arithmetic flex methods (add, sub, mul, pow, etc.). (:issue:`3765`)
+
 Internal Refactoring
 ~~~~~~~~~~~~~~~~~~~~
 
