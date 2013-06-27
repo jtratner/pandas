@@ -57,7 +57,15 @@ class TestExpressions(unittest.TestCase):
         if not py3compat.PY3:
             operations.append('div')
         for arith in operations:
-            op = getattr(operator, arith)
+            if test_flex:
+                op = getattr(df, arith)
+            else:
+                op = getattr(operator, arith)
+            if test_flex:
+                op = lambda x, y : getattr(df, arith)(y)
+                op.__name__ = arith
+            else:
+                op = getattr(operator, arith)
             expr.set_use_numexpr(False)
             expected = op(df, df)
             expr.set_use_numexpr(True)
@@ -77,6 +85,122 @@ class TestExpressions(unittest.TestCase):
         self.run_arithmetic_test(self.integer, assert_frame_equal)
         self.run_arithmetic_test(self.integer.icol(0), assert_series_equal,
                                  check_dtype=True)
+
+    @nose.tools.nottest
+    def run_binary_test(self, df, other, assert_func, check_dtype=False,
+                        test_flex=False, numexpr_ops=set(['gt', 'lt', 'ge', 'le', 'eq', 'ne'])):
+        """
+        tests solely that the result is the same whether or not numexpr is enabled.
+        Need to test whether the function does the correct thing elsewhere.
+        """
+        expr._MIN_ELEMENTS = 0
+        expr.set_test_mode(True)
+        operations = ['gt', 'lt', 'ge', 'le', 'eq', 'ne']
+        for arith in operations:
+            if test_flex:
+                op = lambda x, y: getattr(df, arith)(y)
+                op.__name__ = arith
+            else:
+                op = getattr(operator, arith)
+            expr.set_use_numexpr(False)
+            expected = op(df, other)
+            expr.set_use_numexpr(True)
+            expr.get_test_result()
+            result = op(df, other)
+            used_numexpr = expr.get_test_result()
+            try:
+                if check_dtype:
+                    if arith == 'div':
+                        assert expected.dtype.kind == result.dtype.kind
+                    if arith == 'truediv':
+                        assert result.dtype.kind == 'f'
+                if arith in numexpr_ops:
+                    assert used_numexpr, "Did not use numexpr as expected."
+                else:
+                    assert not used_numexpr, "Used numexpr unexpectedly."
+                assert_func(expected, result)
+            except Exception:
+                print("Failed test with operation %r" % arith)
+                print("test_flex was %r" % test_flex)
+                raise
+
+    def run_frame(self, df, other, binary_comp=None, run_binary=True, **kwargs):
+        self.run_arithmetic_test(df, other, assert_frame_equal, test_flex=False,
+                                 **kwargs)
+        self.run_arithmetic_test(df, other, assert_frame_equal, test_flex=True,
+                                 **kwargs)
+        if run_binary:
+            print repr(binary_comp)
+            if binary_comp is None:
+                expr.set_use_numexpr(False)
+                binary_comp = other + 1
+                expr.set_use_numexpr(True)
+            self.run_binary_test(df, binary_comp, assert_frame_equal, test_flex=False,
+                                 **kwargs)
+            self.run_binary_test(df, binary_comp, assert_frame_equal, test_flex=True,
+                                 **kwargs)
+
+    def run_series(self, ser, other, binary_comp=None, **kwargs):
+        self.run_arithmetic_test(ser, other, assert_series_equal, test_flex=False, **kwargs)
+        self.run_arithmetic_test(ser, other, assert_almost_equal, test_flex=True, **kwargs)
+        # series doesn't uses vec_compare instead of numexpr...
+        # if binary_comp is None:
+        #     binary_comp = other + 1
+        # self.run_binary_test(ser, binary_comp, assert_frame_equal, test_flex=False,
+        #         **kwargs)
+        # self.run_binary_test(ser, binary_comp, assert_frame_equal, test_flex=True,
+        #         **kwargs)
+
+    def run_panel(self, panel, other, binary_comp=None, run_binary=True,
+                  assert_func=assert_panel_equal, **kwargs):
+        self.run_arithmetic_test(panel, other, assert_func, test_flex=False, **kwargs)
+        self.run_arithmetic_test(panel, other, assert_func, test_flex=True, **kwargs)
+        if run_binary:
+            if binary_comp is None:
+                binary_comp = other + 1
+            self.run_binary_test(panel, binary_comp, assert_func,
+                                 test_flex=False, **kwargs)
+            self.run_binary_test(panel, binary_comp, assert_func,
+                                 test_flex=True, **kwargs)
+
+    def test_integer_arithmetic_frame(self):
+        self.run_frame(self.integer, self.integer)
+
+    def test_integer_arithmetic_series(self):
+        self.run_series(self.integer.icol(0), self.integer.icol(0))
+
+    @slow
+    def test_integer_panel(self):
+        self.run_panel(_integer2_panel, np.random.randint(1, 100))
+
+    def test_float_arithemtic_frame(self):
+        self.run_frame(self.frame2, self.frame2)
+
+    def test_float_arithmetic_series(self):
+        self.run_series(self.frame2.icol(0), self.frame2.icol(0))
+
+    @slow
+    def test_float_panel(self):
+        self.run_panel(_frame2_panel, np.random.randn() + 0.1, binary_comp=0.8)
+
+    @slow
+    def test_panel4d(self):
+        self.run_panel(tm.makePanel4D(), np.random.randn() + 0.5,
+                       assert_func=assert_panel4d_equal, binary_comp=3)
+
+    def test_mixed_arithmetic_frame(self):
+        # TODO: FIGURE OUT HOW TO GET IT TO WORK...
+        # can't do arithmetic because comparison methods try to do *entire*
+        # frame instead of by-column
+        self.run_frame(self.mixed2, self.mixed2, run_binary=False)
+
+    def test_mixed_arithmetic_series(self):
+        for col in self.mixed2.columns:
+            self.run_series(self.mixed2[col], self.mixed2[col], binary_comp=4)
+
+    @slow
+    def test_mixed_panel(self):
+        self.run_panel(_mixed2_panel, np.random.randint(1, 100), binary_comp=-2)
 
     def test_float_arithemtic(self):
         self.run_arithmetic_test(self.frame, assert_frame_equal)
@@ -127,11 +251,11 @@ class TestExpressions(unittest.TestCase):
                         result   = expr.evaluate(op, op_str, f, f, use_numexpr=True)
                         expected = expr.evaluate(op, op_str, f, f, use_numexpr=False)
                         assert_array_equal(result,expected.values)
-                
+
                         result   = expr._can_use_numexpr(op, op_str, f2, f2, 'evaluate')
                         self.assert_(result == False)
 
-        
+
         expr.set_use_numexpr(False)
         testit()
         expr.set_use_numexpr(True)
@@ -148,7 +272,7 @@ class TestExpressions(unittest.TestCase):
 
                 f11 = f
                 f12 = f + 1
-            
+
                 f21 = f2
                 f22 = f2 + 1
 
@@ -162,7 +286,7 @@ class TestExpressions(unittest.TestCase):
                     result   = expr.evaluate(op, op_str, f11, f12, use_numexpr=True)
                     expected = expr.evaluate(op, op_str, f11, f12, use_numexpr=False)
                     assert_array_equal(result,expected.values)
-                    
+
                     result   = expr._can_use_numexpr(op, op_str, f21, f22, 'evaluate')
                     self.assert_(result == False)
 
@@ -179,7 +303,7 @@ class TestExpressions(unittest.TestCase):
         def testit():
             for f in [ self.frame, self.frame2, self.mixed, self.mixed2 ]:
 
-                
+
                 for cond in [ True, False ]:
 
                     c = np.empty(f.shape,dtype=np.bool_)

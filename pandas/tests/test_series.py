@@ -259,7 +259,6 @@ class SafeForSparse(object):
 
 _ts = tm.makeTimeSeries()
 
-
 class TestSeries(unittest.TestCase, CheckNameIntegration):
 
     _multiprocess_can_split_ = True
@@ -1773,7 +1772,9 @@ class TestSeries(unittest.TestCase, CheckNameIntegration):
             tm.assert_almost_equal(result, expected)
 
         def check(series, other):
-            simple_ops = ['add', 'sub', 'mul']
+            simple_ops = ['add', 'sub', 'mul', 'floordiv', 'truediv', 'pow']
+            if not py3compat.PY3:
+                simple_ops.append('div')
 
             for opname in simple_ops:
                 _check_op(series, other, getattr(Series, opname),
@@ -1782,6 +1783,7 @@ class TestSeries(unittest.TestCase, CheckNameIntegration):
         check(self.ts, self.ts * 2)
         check(self.ts, self.ts[::2])
         check(self.ts, 5)
+        check(tm.makeFloatSeries(), tm.makeFloatSeries())
 
     def test_neg(self):
         assert_series_equal(-self.series, -1 * self.series)
@@ -2159,7 +2161,7 @@ class TestSeries(unittest.TestCase, CheckNameIntegration):
         s = Series(bdate_range('1/1/2000', periods=10), dtype=object)
         s[::2] = np.nan
 
-        # test that comparions work
+        # test that comparisons work
         ops = ['lt', 'le', 'gt', 'ge', 'eq', 'ne']
         for op in ops:
             val = s[5]
