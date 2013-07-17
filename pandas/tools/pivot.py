@@ -225,10 +225,8 @@ def _add_margins(table, data, values, rows=None, cols=None, aggfunc=np.mean):
 def _convert_by(by):
     if by is None:
         by = []
-    elif (np.isscalar(by) or isinstance(by, np.ndarray)
+    elif (np.isscalar(by) or isinstance(by, (np.ndarray, Series))
           or hasattr(by, '__call__')):
-        by = [by]
-    elif isinstance(by, Series):
         by = [by]
     else:
         by = list(by)
