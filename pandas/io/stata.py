@@ -550,7 +550,7 @@ class StataReader(StataParser):
                 labeled_data = np.copy(data[col])
                 labeled_data = labeled_data.astype(object)
                 for k, v in self.value_label_dict[self.lbllist[i]].iteritems():
-                    labeled_data[data[col] == k] = v
+                    labeled_data[(data[col] == k).values] = v
                 data[col] = Categorical.from_array(labeled_data)
 
         return data

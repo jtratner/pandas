@@ -278,7 +278,7 @@ class TestGroupBy(unittest.TestCase):
     def test_groupby_return_type(self):
 
         # GH2893, return a reduced type
-        df1 = DataFrame([{"val1": 1, "val2" : 20}, {"val1":1, "val2": 19}, 
+        df1 = DataFrame([{"val1": 1, "val2" : 20}, {"val1":1, "val2": 19},
                          {"val1":2, "val2": 27}, {"val1":2, "val2": 12}])
 
         def func(dataf):
@@ -287,7 +287,7 @@ class TestGroupBy(unittest.TestCase):
         result = df1.groupby("val1", squeeze=True).apply(func)
         self.assert_(isinstance(result,Series))
 
-        df2 = DataFrame([{"val1": 1, "val2" : 20}, {"val1":1, "val2": 19}, 
+        df2 = DataFrame([{"val1": 1, "val2" : 20}, {"val1":1, "val2": 19},
                          {"val1":1, "val2": 27}, {"val1":1, "val2": 12}])
         def func(dataf):
             return dataf["val2"]  - dataf["val2"].mean()
@@ -2553,7 +2553,7 @@ class TestGroupBy(unittest.TestCase):
             grouped.filter(lambda x: x.mean() < 10, dropna=False),
                            expected_odd.reindex(df.index))
         assert_frame_equal(
-            grouped.filter(lambda x: x.mean() > 10, dropna=False), 
+            grouped.filter(lambda x: x.mean() > 10, dropna=False),
                            expected_even.reindex(df.index))
 
     def test_filter_multi_column_df(self):
@@ -2570,7 +2570,7 @@ class TestGroupBy(unittest.TestCase):
         df = pd.DataFrame({'A': [1, 12, 12, 1], 'B': 'a b c d'.split()})
         grouper = df['A'].apply(lambda x: x % 2)
         grouped = df.groupby(grouper)
-        expected = pd.DataFrame({'A': [12, 12], 'B': ['b', 'c']}, 
+        expected = pd.DataFrame({'A': [12, 12], 'B': ['b', 'c']},
                                 index=[1, 2])
         assert_frame_equal(
             grouped.filter(lambda x: x['A'].sum() > 10), expected)
@@ -2613,7 +2613,7 @@ class TestGroupBy(unittest.TestCase):
         s = pd.Series([-1,0,1,2])
         grouper = s.apply(lambda x: x % 2)
         grouped = s.groupby(grouper)
-        self.assertRaises(ValueError, 
+        self.assertRaises(ValueError,
                           lambda: grouped.filter(raise_if_sum_is_zero))
 
     def test_filter_against_workaround(self):

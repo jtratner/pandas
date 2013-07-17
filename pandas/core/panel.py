@@ -6,7 +6,7 @@ Contains data structures designed for manipulating panel (3-dimensional) data
 import operator
 import sys
 import numpy as np
-from pandas.core.common import (PandasError, 
+from pandas.core.common import (PandasError,
                                 _try_sort, _default_index, _infer_dtype_from_scalar,
                                 notnull)
 from pandas.core.categorical import Categorical
@@ -247,13 +247,6 @@ class Panel(NDFrame):
     def _init_arrays(self, arrays, arr_names, axes):
         return create_block_manager_from_arrays(arrays, arr_names, axes)
 
-<<<<<<< HEAD
-    @property
-    def shape(self):
-        return tuple([len(getattr(self, a)) for a in self._AXIS_ORDERS])
-
-=======
->>>>>>> ENH/CLN: refactor of common code from frame/panel to generic.py
     @classmethod
     def from_dict(cls, data, intersect=False, orient='items', dtype=None):
         """
@@ -422,20 +415,6 @@ class Panel(NDFrame):
             [class_name, dims] + [axis_pretty(a) for a in self._AXIS_ORDERS])
         return output
 
-<<<<<<< HEAD
-    def __iter__(self):
-        return iter(getattr(self, self._info_axis))
-
-    def iteritems(self):
-        for h in getattr(self, self._info_axis):
-            yield h, self[h]
-
-    # Name that won't get automatically converted to items by 2to3. items is
-    # already in use for the first axis.
-    iterkv = iteritems
-
-=======
->>>>>>> ENH/CLN: refactor of common code from frame/panel to generic.py
     def _get_plane_axes(self, axis):
         """
         Get my plane axes: these are already
@@ -881,98 +860,6 @@ class Panel(NDFrame):
         axis = self._get_axis_number(axis)
         return PanelGroupBy(self, function, axis=axis)
 
-<<<<<<< HEAD
-    def swapaxes(self, axis1='major', axis2='minor', copy=True):
-        """
-        Interchange axes and swap values axes appropriately
-
-        Returns
-        -------
-        y : Panel (new object)
-        """
-        i = self._get_axis_number(axis1)
-        j = self._get_axis_number(axis2)
-
-        if i == j:
-            raise ValueError('Cannot specify the same axis')
-
-        mapping = {i: j, j: i}
-
-        new_axes = (self._get_axis(mapping.get(k, k))
-                    for k in range(self._AXIS_LEN))
-        new_values = self.values.swapaxes(i, j)
-        if copy:
-            new_values = new_values.copy()
-
-        return self._constructor(new_values, *new_axes)
-
-    def transpose(self, *args, **kwargs):
-        """
-        Permute the dimensions of the Panel
-
-        Parameters
-        ----------
-        items : int or one of {'items', 'major', 'minor'}
-        major : int or one of {'items', 'major', 'minor'}
-        minor : int or one of {'items', 'major', 'minor'}
-        copy : boolean, default False
-            Make a copy of the underlying data. Mixed-dtype data will
-            always result in a copy
-
-        Examples
-        --------
-        >>> p.transpose(2, 0, 1)
-        >>> p.transpose(2, 0, 1, copy=True)
-
-        Returns
-        -------
-        y : Panel (new object)
-        """
-        # construct the args
-        args = list(args)
-        aliases = tuple(kwargs.iterkeys())
-
-        for a in self._AXIS_ORDERS:
-            if not a in kwargs:
-                where = map(a.startswith, aliases)
-
-                if any(where):
-                    if sum(where) != 1:
-                        raise AssertionError(
-                            'Ambiguous parameter aliases "{0}" passed, valid '
-                            'parameter aliases are '
-                            '{1}'.format([n for n, m in zip(aliases, where)
-                                          if m], self._AXIS_ALIASES))
-
-                    k = aliases[where.index(True)]
-
-                    try:
-                        kwargs[self._AXIS_ALIASES[k]] = kwargs.pop(k)
-                    except KeyError:
-                        raise KeyError('Invalid parameter alias '
-                                       '"{0}"'.format(k))
-                else:
-                    try:
-                        kwargs[a] = args.pop(0)
-                    except IndexError:
-                        raise ValueError(
-                            "not enough arguments specified to transpose!")
-
-        axes = [self._get_axis_number(kwargs[a]) for a in self._AXIS_ORDERS]
-
-        # we must have unique axes
-        if len(axes) != len(set(axes)):
-            raise ValueError('Must specify %s unique axes' % self._AXIS_LEN)
-
-        new_axes = self._construct_axes_dict_from(
-            self, [self._get_axis(x) for x in axes])
-        new_values = self.values.transpose(tuple(axes))
-        if kwargs.get('copy') or (len(args) and args[-1]):
-            new_values = new_values.copy()
-        return self._constructor(new_values, **new_axes)
-
-=======
->>>>>>> ENH/CLN: refactor of common code from frame/panel to generic.py
     def to_frame(self, filter_observations=True):
         """
         Transform wide format into long (stacked) format as DataFrame

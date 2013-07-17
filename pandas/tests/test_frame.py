@@ -3296,27 +3296,17 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
     def test_astype_with_view(self):
 
         tf = self.mixed_float.reindex(columns = ['A','B','C'])
-        self.assertRaises(TypeError, self.frame.astype, np.int32, copy = False)
 
-        self.assertRaises(TypeError, tf, np.int32, copy = False)
-
-        self.assertRaises(TypeError, tf, np.int64, copy = False)
         casted = tf.astype(np.int64)
 
-        self.assertRaises(TypeError, tf, np.float32, copy = False)
         casted = tf.astype(np.float32)
 
         # this is the only real reason to do it this way
         tf = np.round(self.frame).astype(np.int32)
         casted = tf.astype(np.float32, copy = False)
-        #self.assert_(casted.values.data == tf.values.data)
 
         tf = self.frame.astype(np.float64)
         casted = tf.astype(np.int64, copy = False)
-        #self.assert_(casted.values.data == tf.values.data)
-
-        # can't view to an object array
-        self.assertRaises(Exception, self.frame.astype, 'O', copy = False)
 
     def test_astype_cast_nan_int(self):
         df = DataFrame(data={"Values": [1.0, 2.0, 3.0, np.nan]})
@@ -5684,7 +5674,7 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
         expected.sort()
         result = frame.ftypes
         result.sort()
-        assert_series_equal(result,expected)        
+        assert_series_equal(result,expected)
 
     def test_values(self):
         self.frame.values[:, 0] = 5.
@@ -8147,7 +8137,7 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
 
     def test_apply_reduce_Series(self):
         self.frame.ix[::2, 'A'] = np.nan
-        expected = self.frame.mean(1)    
+        expected = self.frame.mean(1)
         result = self.frame.apply(np.mean, axis=1)
         assert_series_equal(result, expected)
 

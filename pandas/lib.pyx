@@ -714,11 +714,20 @@ def vec_binop(ndarray[object] left, ndarray[object] right, object op):
 def astype_intsafe(ndarray[object] arr, new_dtype):
     cdef:
         Py_ssize_t i, n = len(arr)
+        object v
+        bint is_datelike
         ndarray result
+
+    # on 32-bit, 1.6.2 numpy M8[ns] is a subdtype of integer, which is weird
+    is_datelike = new_dtype in ['M8[ns]','m8[ns]']
 
     result = np.empty(n, dtype=new_dtype)
     for i in range(n):
-        util.set_value_at(result, i, arr[i])
+        v = arr[i]
+        if is_datelike and checknull(v):
+           result[i] = NPY_NAT
+        else:
+           util.set_value_at(result, i, v)
 
     return result
 
@@ -838,7 +847,7 @@ def write_csv_rows(list data, list data_index, int nlevels, list cols, object wr
 def create_hdf_rows_2d(ndarray indexer0,
                        object dtype,
                        ndarray[np.uint8_t, ndim=1] mask,
-                       ndarray[np.uint8_t, ndim=1] searchable,	 
+                       ndarray[np.uint8_t, ndim=1] searchable,
                        list values):
     """ return a list of objects ready to be converted to rec-array format """
 
@@ -857,7 +866,7 @@ def create_hdf_rows_2d(ndarray indexer0,
     for i in range(n_indexer0):
 
         if not mask[i]:
-         
+
             tup = PyTuple_New(tup_size)
 
             v  = indexer0[i]
@@ -869,7 +878,7 @@ def create_hdf_rows_2d(ndarray indexer0,
                 v = values[b][i]
                 if searchable[b]:
                     v = v[0]
-        
+
                 PyTuple_SET_ITEM(tup, b+1, v)
                 Py_INCREF(v)
 
@@ -882,8 +891,8 @@ def create_hdf_rows_2d(ndarray indexer0,
 @cython.wraparound(False)
 def create_hdf_rows_3d(ndarray indexer0, ndarray indexer1,
                        object dtype,
-                       ndarray[np.uint8_t, ndim=2] mask, 
-                       ndarray[np.uint8_t, ndim=1] searchable,	 
+                       ndarray[np.uint8_t, ndim=2] mask,
+                       ndarray[np.uint8_t, ndim=1] searchable,
                        list values):
     """ return a list of objects ready to be converted to rec-array format """
 
@@ -932,8 +941,8 @@ def create_hdf_rows_3d(ndarray indexer0, ndarray indexer1,
 @cython.wraparound(False)
 def create_hdf_rows_4d(ndarray indexer0, ndarray indexer1, ndarray indexer2,
                        object dtype,
-                       ndarray[np.uint8_t, ndim=3] mask, 
-                       ndarray[np.uint8_t, ndim=1] searchable,	 
+                       ndarray[np.uint8_t, ndim=3] mask,
+                       ndarray[np.uint8_t, ndim=1] searchable,
                        list values):
     """ return a list of objects ready to be converted to rec-array format """
 
