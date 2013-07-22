@@ -37,6 +37,7 @@ def _sparse_op_wrap(op, name):
     Wrapper function for Series arithmetic operations, to avoid
     code duplication.
     """
+
     def wrapper(self, other):
         if isinstance(other, Series):
             if not isinstance(other, SparseSeries):
@@ -71,7 +72,9 @@ def _sparse_series_op(left, right, op, name):
     result = _sparse_array_op(left, right, op, name)
     return SparseSeries(result, index=new_index, name=new_name)
 
+
 class SparseSeries(Series):
+
     """Data structure for labeled, sparse floating point data
 
     Parameters
@@ -139,7 +142,7 @@ class SparseSeries(Series):
                 # array-like
                 if sparse_index is None:
                     data, sparse_index = make_sparse(data, kind=kind,
-                                                       fill_value=fill_value)
+                                                     fill_value=fill_value)
                 else:
                     assert(len(data) == sparse_index.npoints)
 
@@ -149,7 +152,7 @@ class SparseSeries(Series):
                 if index is None:
                     index = data.index
                 else:
-                    data = data.reindex(index,copy=False)
+                    data = data.reindex(index, copy=False)
 
             else:
 
@@ -186,14 +189,15 @@ class SparseSeries(Series):
 
                 # create a sparse array
                 if not isinstance(data, SparseArray):
-                    data = SparseArray(data, sparse_index=sparse_index, fill_value=fill_value, dtype=dtype, copy=copy)
+                    data = SparseArray(
+                        data, sparse_index=sparse_index, fill_value=fill_value, dtype=dtype, copy=copy)
 
                 data = SingleBlockManager(data, index)
 
         generic.NDFrame.__init__(self, data)
 
         self.index = index
-        self.name  = name
+        self.name = name
 
     @property
     def values(self):
@@ -298,7 +302,6 @@ class SparseSeries(Series):
         __div__ = _sparse_op_wrap(operator.div, 'div')
         __rdiv__ = _sparse_op_wrap(lambda x, y: y / x, '__rdiv__')
 
-
     def __array_wrap__(self, result):
         """
         Gets called prior to a ufunc (and after)
@@ -319,18 +322,18 @@ class SparseSeries(Series):
 
     def __getstate__(self):
         # pickling
-        return dict(_typ       = self._typ,
-                    _subtyp    = self._subtyp,
-                    _data      = self._data,
-                    fill_value = self.fill_value,
-                    name       = self.name)
+        return dict(_typ=self._typ,
+                    _subtyp=self._subtyp,
+                    _data=self._data,
+                    fill_value=self.fill_value,
+                    name=self.name)
 
     def _unpickle_series_compat(self, state):
 
         nd_state, own_state = state
 
         # recreate the ndarray
-        data = np.empty(nd_state[1],dtype=nd_state[2])
+        data = np.empty(nd_state[1], dtype=nd_state[2])
         np.ndarray.__setstate__(data, nd_state)
 
         index, fill_value, sp_index = own_state[:3]
@@ -340,13 +343,14 @@ class SparseSeries(Series):
 
         # create a sparse array
         if not isinstance(data, SparseArray):
-            data = SparseArray(data, sparse_index=sp_index, fill_value=fill_value, copy=False)
+            data = SparseArray(
+                data, sparse_index=sp_index, fill_value=fill_value, copy=False)
 
         # recreate
         data = SingleBlockManager(data, index, fastpath=True)
         generic.NDFrame.__init__(self, data)
 
-        self._set_axis(0,index)
+        self._set_axis(0, index)
         self.name = name
 
     def __iter__(self):
@@ -355,9 +359,9 @@ class SparseSeries(Series):
 
     def _set_subtyp(self, is_all_dates):
         if is_all_dates:
-            object.__setattr__(self,'_subtyp','sparse_time_series')
+            object.__setattr__(self, '_subtyp', 'sparse_time_series')
         else:
-            object.__setattr__(self,'_subtyp','sparse_series')
+            object.__setattr__(self, '_subtyp', 'sparse_series')
 
     def _get_val_at(self, loc):
         """ forward to the array """
@@ -471,7 +475,8 @@ class SparseSeries(Series):
         if new_values is not None:
             values = new_values
         new_index = values.index
-        values = SparseArray(values, fill_value=self.fill_value, kind=self.kind)
+        values = SparseArray(
+            values, fill_value=self.fill_value, kind=self.kind)
         self._data = SingleBlockManager(values, new_index)
         self._index = new_index
 
@@ -486,7 +491,8 @@ class SparseSeries(Series):
 
         values = self.values.to_dense()
         values[key] = _index.convert_scalar(values, value)
-        values = SparseArray(values, fill_value=self.fill_value, kind=self.kind)
+        values = SparseArray(
+            values, fill_value=self.fill_value, kind=self.kind)
         self._data = SingleBlockManager(values, self.index)
 
     def to_dense(self, sparse_only=False):
@@ -535,7 +541,7 @@ class SparseSeries(Series):
                 return self.copy()
             else:
                 return self
-        return self._constructor(self._data.reindex(new_index,method=method,limit=limit,copy=copy),index=new_index,name=self.name)
+        return self._constructor(self._data.reindex(new_index, method=method, limit=limit, copy=copy), index=new_index, name=self.name)
 
     def sparse_reindex(self, new_index):
         """
@@ -605,7 +611,7 @@ class SparseSeries(Series):
         if isnull(self.fill_value):
             return dense_valid
         else:
-            dense_valid=dense_valid[dense_valid!=self.fill_value]
+            dense_valid = dense_valid[dense_valid != self.fill_value]
             return dense_valid.to_sparse(fill_value=self.fill_value)
 
     def shift(self, periods, freq=None, **kwds):

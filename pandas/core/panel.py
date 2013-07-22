@@ -143,6 +143,7 @@ def _comp_method(func, name):
 
 
 class Panel(NDFrame):
+
     """
     Represents wide format panel data, stored as 3-dimensional array
 
@@ -212,7 +213,7 @@ class Panel(NDFrame):
                                in data.iteritems() if k in haxis)
         else:
             ks = data.keys()
-            if not isinstance(data,OrderedDict):
+            if not isinstance(data, OrderedDict):
                 ks = _try_sort(ks)
             haxis = Index(ks)
 
@@ -270,7 +271,7 @@ class Panel(NDFrame):
         -------
         Panel
         """
-        from pandas.util.compat import OrderedDict,OrderedDefaultdict
+        from pandas.util.compat import OrderedDict, OrderedDefaultdict
 
         orient = orient.lower()
         if orient == 'minor':
@@ -284,7 +285,7 @@ class Panel(NDFrame):
 
         d = cls._homogenize_dict(cls, data, intersect=intersect, dtype=dtype)
         ks = d['data'].keys()
-        if not isinstance(d['data'],OrderedDict):
+        if not isinstance(d['data'], OrderedDict):
             ks = list(sorted(ks))
         d[cls._info_axis_name] = Index(ks)
         return cls(**d)
@@ -348,7 +349,7 @@ class Panel(NDFrame):
                 ax = _ensure_index(ax)
             fixed_axes.append(ax)
 
-        return create_block_manager_from_blocks([ values ], fixed_axes)
+        return create_block_manager_from_blocks([values], fixed_axes)
 
     #----------------------------------------------------------------------
     # Comparison methods
@@ -534,7 +535,7 @@ class Panel(NDFrame):
             axes = self._expand_axes(args)
             d = self._construct_axes_dict_from(self, axes, copy=False)
             result = self.reindex(**d)
-            args  = list(args)
+            args = list(args)
             likely_dtype, args[-1] = _infer_dtype_from_scalar(args[-1])
             made_bigger = not np.array_equal(
                 axes[0], self._info_axis)
@@ -838,7 +839,7 @@ class Panel(NDFrame):
 
         # xs cannot handle a non-scalar key, so just reindex here
         if _is_list_like(key):
-            return self.reindex(**{ self._get_axis_name(axis) : key })
+            return self.reindex(**{self._get_axis_name(axis): key})
 
         return self.xs(key, axis=axis)
 
@@ -939,7 +940,7 @@ class Panel(NDFrame):
             result = result.T
 
         return self._constructor_sliced(result,
-                                **self._extract_axes_for_slice(self, axes))
+                                        **self._extract_axes_for_slice(self, axes))
 
     def _wrap_result(self, result, axis):
         axis = self._get_axis_name(axis)
@@ -952,7 +953,7 @@ class Panel(NDFrame):
             return self._constructor(result, **self._construct_axes_dict())
         elif self.ndim == result.ndim + 1:
             return self._constructor_sliced(result,
-                                **self._extract_axes_for_slice(self, axes))
+                                            **self._extract_axes_for_slice(self, axes))
 
         raise PandasError("invalid _wrap_result [self->%s] [result->%s]" %
                           (self.ndim, result.ndim))
@@ -1115,7 +1116,7 @@ class Panel(NDFrame):
         if not isinstance(other, self._constructor):
             other = self._constructor(other)
 
-        axis_name   = self._info_axis_name
+        axis_name = self._info_axis_name
         axis_values = self._info_axis
         other = other.reindex(**{axis_name: axis_values})
 
@@ -1181,7 +1182,8 @@ class Panel(NDFrame):
         from pandas.util.compat import OrderedDict
 
         result = dict()
-        if isinstance(frames,OrderedDict): # caller differs dict/ODict, presered type
+        # caller differs dict/ODict, presered type
+        if isinstance(frames, OrderedDict):
             result = OrderedDict()
 
         adj_frames = OrderedDict()
@@ -1290,7 +1292,7 @@ Return %(desc)s over requested axis
 Parameters
 ----------
 axis : {""" + ', '.join(cls._AXIS_ORDERS) + "} or {" \
-+ ', '.join([str(i) for i in range(cls._AXIS_LEN)]) + """}
+            + ', '.join([str(i) for i in range(cls._AXIS_LEN)]) + """}
 skipna : boolean, default True
     Exclude NA/null values. If an entire row/column is NA, the result
     will be NA
@@ -1364,13 +1366,13 @@ If all values are NA, result will be NA"""
             return self._reduce(nanops.nanmin, axis=axis, skipna=skipna)
         cls.min = min
 
-Panel._setup_axes(axes      = ['items', 'major_axis', 'minor_axis'],
-                  info_axis = 0,
-                  stat_axis = 1,
-                  aliases   = { 'major': 'major_axis',
-                                'minor': 'minor_axis' },
-                  slicers   = { 'major_axis': 'index',
-                                'minor_axis': 'columns' })
+Panel._setup_axes(axes=['items', 'major_axis', 'minor_axis'],
+                  info_axis=0,
+                  stat_axis=1,
+                  aliases={'major': 'major_axis',
+                           'minor': 'minor_axis'},
+                  slicers={'major_axis': 'index',
+                           'minor_axis': 'columns'})
 Panel._add_aggregate_operations()
 
 WidePanel = Panel
@@ -1386,7 +1388,7 @@ def install_ipython_completers():  # pragma: no cover
     def complete_dataframe(obj, prev_completions):
         return prev_completions + [c for c in obj.keys()
                                    if isinstance(c, basestring)
-                                        and py3compat.isidentifier(c)]
+                                   and py3compat.isidentifier(c)]
 
 # Importing IPython brings in about 200 modules, so we want to avoid it unless
 # we're in IPython (when those modules are loaded anyway).
