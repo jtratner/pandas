@@ -4183,36 +4183,11 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
             aliases = {'div': 'truediv'}
 
         for op in ops:
-            alias = aliases.get(op, op)
-            f = getattr(operator, alias)
-            result = getattr(self.frame, op)(2 * self.frame)
-            exp = f(self.frame, 2 * self.frame)
-            assert_frame_equal(result, exp)
-
-            # vs mix float
-            result = getattr(self.mixed_float, op)(2 * self.mixed_float)
-            exp = f(self.mixed_float, 2 * self.mixed_float)
-            assert_frame_equal(result, exp)
-            _check_mixed_float(result, dtype = dict(C = None))
-
-            # vs mix int
-            if op in ['add','sub','mul']:
-                result = getattr(self.mixed_int, op)(2 + self.mixed_int)
-                exp = f(self.mixed_int, 2 + self.mixed_int)
-
-                # overflow in the uint
-                dtype = None
-                if op in ['sub']:
-                    dtype = dict(B = 'object', C = None)
-                elif op in ['add','mul']:
-                    dtype = dict(C = None)
-                assert_frame_equal(result, exp)
-                _check_mixed_int(result, dtype = dtype)
-
-                # rops
-                r_f = lambda x, y: f(y, x)
-                result = getattr(self.frame, 'r' + op)(2 * self.frame)
-                exp = r_f(self.frame, 2 * self.frame)
+            try:
+                alias = aliases.get(op, op)
+                f = getattr(operator, alias)
+                result = getattr(self.frame, op)(2 * self.frame)
+                exp = f(self.frame, 2 * self.frame)
                 assert_frame_equal(result, exp)
 
                 # vs mix float
@@ -4220,11 +4195,6 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
                 exp = f(self.mixed_float, 2 * self.mixed_float)
                 assert_frame_equal(result, exp)
                 _check_mixed_float(result, dtype = dict(C = None))
-
-                result = getattr(self.intframe, op)(2 * self.intframe)
-                exp = f(self.intframe, 2 * self.intframe)
-                print repr(op), repr(f)
-                assert_frame_equal(result, exp)
 
                 # vs mix int
                 if op in ['add','sub','mul']:
@@ -4239,6 +4209,37 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
                         dtype = dict(C = None)
                     assert_frame_equal(result, exp)
                     _check_mixed_int(result, dtype = dtype)
+
+                    # rops
+                    r_f = lambda x, y: f(y, x)
+                    result = getattr(self.frame, 'r' + op)(2 * self.frame)
+                    exp = r_f(self.frame, 2 * self.frame)
+                    assert_frame_equal(result, exp)
+
+                    # vs mix float
+                    result = getattr(self.mixed_float, op)(2 * self.mixed_float)
+                    exp = f(self.mixed_float, 2 * self.mixed_float)
+                    assert_frame_equal(result, exp)
+                    _check_mixed_float(result, dtype = dict(C = None))
+
+                    result = getattr(self.intframe, op)(2 * self.intframe)
+                    exp = f(self.intframe, 2 * self.intframe)
+                    print repr(op), repr(f)
+                    assert_frame_equal(result, exp)
+
+                    # vs mix int
+                    if op in ['add','sub','mul']:
+                        result = getattr(self.mixed_int, op)(2 + self.mixed_int)
+                        exp = f(self.mixed_int, 2 + self.mixed_int)
+
+                        # overflow in the uint
+                        dtype = None
+                        if op in ['sub']:
+                            dtype = dict(B = 'object', C = None)
+                        elif op in ['add','mul']:
+                            dtype = dict(C = None)
+                        assert_frame_equal(result, exp)
+                        _check_mixed_int(result, dtype = dtype)
             except:
                 print("Failing operation %r" % op)
                 raise
