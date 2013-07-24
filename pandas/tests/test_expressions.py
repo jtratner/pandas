@@ -243,41 +243,50 @@ class TestExpressions(unittest.TestCase):
     def test_invalid(self):
 
         # no op
-        result   = expr._can_use_numexpr(operator.add, None, self.frame, self.frame, 'evaluate')
+        result = expr._can_use_numexpr(operator.add, None, self.frame,
+                                         self.frame, 'evaluate')
         self.assert_(result == False)
 
         # mixed
-        result   = expr._can_use_numexpr(operator.add, '+', self.mixed, self.frame, 'evaluate')
-        self.assert_(result == False)
+        result = expr._can_use_numexpr(operator.add, '+', self.mixed,
+                                         self.frame, 'evaluate')
+        self.assert_(result is False)
 
         # min elements
-        result   = expr._can_use_numexpr(operator.add, '+', self.frame2, self.frame2, 'evaluate')
-        self.assert_(result == False)
+        result = expr._can_use_numexpr(operator.add, '+', self.frame2,
+                                         self.frame2, 'evaluate')
+        self.assert_(result is False)
 
         # ok, we only check on first part of expression
-        result   = expr._can_use_numexpr(operator.add, '+', self.frame, self.frame2, 'evaluate')
-        self.assert_(result == True)
+        result = expr._can_use_numexpr(operator.add, '+', self.frame,
+                                       self.frame2, 'evaluate')
+        self.assert_(result is True)
 
     def test_binary_ops(self):
 
         def testit():
 
-            for f, f2 in [ (self.frame, self.frame2), (self.mixed, self.mixed2) ]:
+            for f, f2 in [(self.frame, self.frame2),
+                          (self.mixed, self.mixed2)]:
 
-                for op, op_str in [('add','+'),('sub','-'),('mul','*'),('div','/'),('pow','**')]:
+                for op,  op_str in [('add', '+'),  ('sub', '-'),  ('mul', '*'),
+                                   ('div', '/'),  ('pow', '**')]:
 
-                    op = getattr(operator,op,None)
+                    op = getattr(operator, op, None)
                     if op is not None:
-                        result   = expr._can_use_numexpr(op, op_str, f, f, 'evaluate')
+                        result = expr._can_use_numexpr(op, op_str, f, f,
+                                                         'evaluate')
                         self.assert_(result == (not f._is_mixed_type))
 
-                        result   = expr.evaluate(op, op_str, f, f, use_numexpr=True)
-                        expected = expr.evaluate(op, op_str, f, f, use_numexpr=False)
-                        assert_array_equal(result,expected.values)
+                        result = expr.evaluate(op, op_str, f, f,
+                                               use_numexpr=True)
+                        expected = expr.evaluate(op, op_str, f, f,
+                                                 use_numexpr=False)
+                        assert_array_equal(result, expected.values)
 
-                        result   = expr._can_use_numexpr(op, op_str, f2, f2, 'evaluate')
-                        self.assert_(result == False)
-
+                        result = expr._can_use_numexpr(op, op_str, f2, f2,
+                                                       'evaluate')
+                        self.assert_(result is False)
 
         expr.set_use_numexpr(False)
         testit()
@@ -291,7 +300,8 @@ class TestExpressions(unittest.TestCase):
 
 
         def testit():
-            for f, f2 in [ (self.frame, self.frame2), (self.mixed, self.mixed2) ]:
+            for f, f2 in [(self.frame, self.frame2),
+                          (self.mixed, self.mixed2)]:
 
                 f11 = f
                 f12 = f + 1
@@ -299,8 +309,8 @@ class TestExpressions(unittest.TestCase):
                 f21 = f2
                 f22 = f2 + 1
 
-                for op, op_str in [('gt','>'),('lt','<'),('ge','>='),('le','<='),('eq','=='),('ne','!=')]:
-
+                for op,  op_str in [('gt', '>'), ('lt', '<'), ('ge', '>='),
+                                    ('le', '<='), ('eq', '=='), ('ne', '!=')]:
                     op = getattr(operator,op)
 
                     result   = expr._can_use_numexpr(op, op_str, f11, f12, 'evaluate')
