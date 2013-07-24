@@ -4,33 +4,48 @@ import unittest
 import nose
 
 import operator
-from numpy import random, nan
-from numpy.random import randn
 import numpy as np
 from numpy.testing import assert_array_equal
 
-import pandas as pan
-from pandas.core.api import DataFrame, Series, notnull, isnull
+from pandas.core.api import DataFrame, Panel
 from pandas.core import expressions as expr
 
-from pandas.util.testing import (assert_almost_equal,
-                                 assert_series_equal,
-                                 assert_frame_equal)
+from pandas.util.testing import (assert_almost_equal, assert_series_equal,
+                                 assert_frame_equal, assert_panel_equal,
+                                 assert_panel4d_equal)
 from pandas.util import py3compat
 
 import pandas.util.testing as tm
-import pandas.lib as lib
 
 from numpy.testing.decorators import slow
 
 if not expr._USE_NUMEXPR:
     raise nose.SkipTest
 
-_frame  = DataFrame(np.random.randn(10000, 4), columns = list('ABCD'), dtype='float64')
-_frame2 = DataFrame(np.random.randn(100, 4),   columns = list('ABCD'), dtype='float64')
-_mixed  = DataFrame({ 'A' : _frame['A'].copy(), 'B' : _frame['B'].astype('float32'), 'C' : _frame['C'].astype('int64'), 'D' : _frame['D'].astype('int32') })
-_mixed2 = DataFrame({ 'A' : _frame2['A'].copy(), 'B' : _frame2['B'].astype('float32'), 'C' : _frame2['C'].astype('int64'), 'D' : _frame2['D'].astype('int32') })
-_integer  = DataFrame(np.random.randint(1, 100, size=(10001, 4)), columns = list('ABCD'), dtype='int64')
+_frame = DataFrame(np.random.randn(10000, 4), columns=list('ABCD'), dtype='float64')
+_frame2 = DataFrame(np.random.randn(100, 4), columns=list('ABCD'), dtype='float64')
+_mixed = DataFrame({'A': _frame['A'].copy(),
+                    'B': _frame['B'].astype('float32'),
+                    'C': _frame['C'].astype('int64'),
+                    'D': _frame['D'].astype('int32')})
+_mixed2 = DataFrame({'A': _frame2['A'].copy(),
+                     'B': _frame2['B'].astype('float32'),
+                     'C': _frame2['C'].astype('int64'),
+                     'D': _frame2['D'].astype('int32')})
+_integer = DataFrame(np.random.randint(1, 100, size=(10001, 4)),
+                     columns=list('ABCD'), dtype='int64')
+_integer2 = DataFrame(np.random.randint(1, 100, size=(101, 4)),
+                      columns=list('ABCD'), dtype='int64')
+_frame_panel = Panel(dict(ItemA=_frame.copy(), ItemB=(_frame.copy() + 3), ItemC=_frame.copy(), ItemD=_frame.copy()))
+_frame2_panel = Panel(dict(ItemA=_frame2.copy(), ItemB=(_frame2.copy() + 3),
+                           ItemC=_frame2.copy(), ItemD=_frame2.copy()))
+_integer_panel = Panel(dict(ItemA=_integer,
+                            ItemB=(_integer + 34).astype('int64')))
+_integer2_panel = Panel(dict(ItemA=_integer2,
+                             ItemB=(_integer2 + 34).astype('int64')))
+_mixed_panel = Panel(dict(ItemA=_mixed, ItemB=(_mixed + 3)))
+_mixed2_panel = Panel(dict(ItemA=_mixed2, ItemB=(_mixed2 + 3)))
+
 
 class TestExpressions(unittest.TestCase):
 
@@ -53,7 +68,7 @@ class TestExpressions(unittest.TestCase):
     @nose.tools.nottest
     def run_arithmetic_test(self, df, assert_func, check_dtype=False):
         expr._MIN_ELEMENTS = 0
-        operations = ['add', 'sub', 'mul','mod','truediv','floordiv','pow']
+        operations = ['add', 'sub', 'mul', 'mod', 'truediv', 'floordiv', 'pow']
         if not py3compat.PY3:
             operations.append('div')
         for arith in operations:
@@ -62,7 +77,7 @@ class TestExpressions(unittest.TestCase):
             else:
                 op = getattr(operator, arith)
             if test_flex:
-                op = lambda x, y : getattr(df, arith)(y)
+                op = lambda x, y: getattr(df, arith)(y)
                 op.__name__ = arith
             else:
                 op = getattr(operator, arith)
@@ -88,10 +103,12 @@ class TestExpressions(unittest.TestCase):
 
     @nose.tools.nottest
     def run_binary_test(self, df, other, assert_func, check_dtype=False,
-                        test_flex=False, numexpr_ops=set(['gt', 'lt', 'ge', 'le', 'eq', 'ne'])):
+                        test_flex=False, numexpr_ops=set(['gt', 'lt', 'ge',
+                                                          'le', 'eq', 'ne'])):
         """
-        tests solely that the result is the same whether or not numexpr is enabled.
-        Need to test whether the function does the correct thing elsewhere.
+        tests solely that the result is the same whether or not numexpr is
+        enabled.  Need to test whether the function does the correct thing
+        elsewhere.
         """
         expr._MIN_ELEMENTS = 0
         expr.set_test_mode(True)
@@ -124,9 +141,10 @@ class TestExpressions(unittest.TestCase):
                 print("test_flex was %r" % test_flex)
                 raise
 
-    def run_frame(self, df, other, binary_comp=None, run_binary=True, **kwargs):
-        self.run_arithmetic_test(df, other, assert_frame_equal, test_flex=False,
-                                 **kwargs)
+    def run_frame(self, df, other, binary_comp=None, run_binary=True,
+                  **kwargs):
+        self.run_arithmetic_test(df, other, assert_frame_equal,
+                                 test_flex=False, **kwargs)
         self.run_arithmetic_test(df, other, assert_frame_equal, test_flex=True,
                                  **kwargs)
         if run_binary:
@@ -135,14 +153,16 @@ class TestExpressions(unittest.TestCase):
                 expr.set_use_numexpr(False)
                 binary_comp = other + 1
                 expr.set_use_numexpr(True)
-            self.run_binary_test(df, binary_comp, assert_frame_equal, test_flex=False,
-                                 **kwargs)
-            self.run_binary_test(df, binary_comp, assert_frame_equal, test_flex=True,
-                                 **kwargs)
+            self.run_binary_test(df, binary_comp, assert_frame_equal,
+                                 test_flex=False, **kwargs)
+            self.run_binary_test(df, binary_comp, assert_frame_equal,
+                                 test_flex=True, **kwargs)
 
     def run_series(self, ser, other, binary_comp=None, **kwargs):
-        self.run_arithmetic_test(ser, other, assert_series_equal, test_flex=False, **kwargs)
-        self.run_arithmetic_test(ser, other, assert_almost_equal, test_flex=True, **kwargs)
+        self.run_arithmetic_test(ser, other, assert_series_equal,
+                                 test_flex=False, **kwargs)
+        self.run_arithmetic_test(ser, other, assert_almost_equal,
+                                 test_flex=True, **kwargs)
         # series doesn't uses vec_compare instead of numexpr...
         # if binary_comp is None:
         #     binary_comp = other + 1
@@ -153,8 +173,10 @@ class TestExpressions(unittest.TestCase):
 
     def run_panel(self, panel, other, binary_comp=None, run_binary=True,
                   assert_func=assert_panel_equal, **kwargs):
-        self.run_arithmetic_test(panel, other, assert_func, test_flex=False, **kwargs)
-        self.run_arithmetic_test(panel, other, assert_func, test_flex=True, **kwargs)
+        self.run_arithmetic_test(panel, other, assert_func, test_flex=False,
+                                 **kwargs)
+        self.run_arithmetic_test(panel, other, assert_func, test_flex=True,
+                                 **kwargs)
         if run_binary:
             if binary_comp is None:
                 binary_comp = other + 1
@@ -200,12 +222,13 @@ class TestExpressions(unittest.TestCase):
 
     @slow
     def test_mixed_panel(self):
-        self.run_panel(_mixed2_panel, np.random.randint(1, 100), binary_comp=-2)
+        self.run_panel(_mixed2_panel, np.random.randint(1, 100),
+                       binary_comp=-2)
 
     def test_float_arithemtic(self):
         self.run_arithmetic_test(self.frame, assert_frame_equal)
         self.run_arithmetic_test(self.frame.icol(0), assert_series_equal,
-                                check_dtype=True)
+                                 check_dtype=True)
 
     def test_mixed_arithmetic(self):
         self.run_arithmetic_test(self.mixed, assert_frame_equal)
