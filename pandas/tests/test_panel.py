@@ -302,16 +302,27 @@ class SafeForSparse(object):
             result = func(xs, axis='minor')
 
             idx = self.panel.minor_axis[1]
-
-            assert_frame_equal(result.minor_xs(idx),
-                               op(self.panel.minor_xs(idx), xs))
-        ops = ['add', 'sub', 'mul', 'truediv', 'floordiv', 'pow', 'mod']
+            try:
+                assert_frame_equal(result.minor_xs(idx),
+                                op(self.panel.minor_xs(idx), xs))
+            except:
+                print self.panel.minor_xs(idx)
+                print xs
+        ops = ['add', 'sub', 'mul', 'truediv', 'floordiv', 'mod', 'pow']
         if not py3compat.PY3:
             ops.append('div')
-        for op in ops:
-            check_op(getattr(operator, op), op)
         if py3compat.PY3:
-            check_op(operator.floordiv, 'div')
+            try:
+                check_op(operator.floordiv, 'div')
+            except:
+                print "Div failed"
+                raise
+        for op in ops:
+            try:
+                check_op(getattr(operator, op), op)
+            except:
+                print "Failed on op %r" % op
+                raise
 
     def test_combinePanel(self):
         result = self.panel.add(self.panel)
