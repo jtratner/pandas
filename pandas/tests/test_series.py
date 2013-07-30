@@ -24,7 +24,7 @@ import pandas.lib as lib
 import pandas.core.datetools as datetools
 import pandas.core.nanops as nanops
 
-from pandas.compat import StringIO, lrange, range, zip, u, OrderedDict
+from pandas.compat import StringIO, lrange, range, zip, u, OrderedDict, long
 from pandas import compat
 from pandas.util.testing import (assert_series_equal,
                                  assert_almost_equal,

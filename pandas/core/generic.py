@@ -1,7 +1,6 @@
 # pylint: disable=W0231,E1101
 import warnings
 from pandas import compat
-import itertools
 import operator
 import weakref
 import numpy as np
@@ -14,7 +13,6 @@ from pandas.core.indexing import _maybe_convert_indices
 from pandas.tseries.index import DatetimeIndex
 from pandas.core.internals import BlockManager
 import pandas.lib as lib
-from pandas.util import py3compat
 import pandas.core.common as com
 from pandas.compat import map, zip
 from pandas.core.common import (isnull, notnull, is_list_like,
@@ -78,31 +76,6 @@ class NDFrame(PandasObject):
     def _constructor(self):
         raise NotImplementedError
 
-<<<<<<< HEAD
-    def to_pickle(self, path):
-        """
-        Pickle (serialize) object to input file path
-
-        Parameters
-        ----------
-        path : string
-            File path
-        """
-        from pandas.io.pickle import to_pickle
-        return to_pickle(self, path)
-
-    def save(self, path):  # TODO remove in 0.13
-        from pandas.io.pickle import to_pickle
-        warnings.warn("save is deprecated, use to_pickle", FutureWarning)
-        return to_pickle(self, path)
-
-    def load(self, path):  # TODO remove in 0.13
-        from pandas.io.pickle import read_pickle
-        warnings.warn("load is deprecated, use pd.read_pickle", FutureWarning)
-        return read_pickle(path)
-
-=======
->>>>>>> CLN: rebase to 0.12
     def __hash__(self):
         raise TypeError('{0!r} objects are mutable, thus they cannot be'
                         ' hashed'.format(self.__class__.__name__))
@@ -1170,7 +1143,7 @@ class NDFrame(PandasObject):
         if items is not None:
             return self.reindex(**{axis_name: [r for r in items if r in axis_values]})
         elif like:
-            matchf = lambda x: (like in x if isinstance(x, basestring)
+            matchf = lambda x: (like in x if isinstance(x, compat.string_types)
                                 else like in str(x))
             return self.select(matchf, axis=axis_name)
         elif regex:
@@ -1478,7 +1451,7 @@ class NDFrame(PandasObject):
                                               'by column')
 
                 result = self if inplace else self.copy()
-                for k, v in value.iteritems():
+                for k, v in compat.iteritems(value):
                     if k not in result:
                         continue
                     obj = result[k]
@@ -1627,7 +1600,7 @@ class NDFrame(PandasObject):
                 regex = True
 
             items = to_replace.items()
-            keys, values = itertools.izip(*items)
+            keys, values = zip(*items)
 
             are_mappings = [is_dictlike(v) for v in values]
 
@@ -1661,7 +1634,7 @@ class NDFrame(PandasObject):
             if is_dictlike(to_replace):
                 if is_dictlike(value):  # {'A' : NA} -> {'A' : 0}
                     new_data = self._data
-                    for c, src in to_replace.iteritems():
+                    for c, src in compat.iteritems(to_replace):
                         if c in value and c in self:
                             new_data = new_data.replace(src, value[c],
                                                         filter=[c],
@@ -1671,7 +1644,7 @@ class NDFrame(PandasObject):
                 # {'A': NA} -> 0
                 elif not isinstance(value, (list, np.ndarray)):
                     new_data = self._data
-                    for k, src in to_replace.iteritems():
+                    for k, src in compat.iteritems(to_replace):
                         if k in self:
                             new_data = new_data.replace(src, value,
                                                         filter=[k],
@@ -1711,7 +1684,7 @@ class NDFrame(PandasObject):
                 if is_dictlike(value):  # NA -> {'A' : 0, 'B' : -1}
                     new_data = self._data
 
-                    for k, v in value.iteritems():
+                    for k, v in compat.iteritems(value):
                         if k in self:
                             new_data = new_data.replace(to_replace, v,
                                                         filter=[k],
