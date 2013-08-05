@@ -901,7 +901,8 @@ class Series(generic.NDFrame):
                     except (TypeError):
                         pass
 
-            raise KeyError('%s not in this series!' % str(key))
+            self.loc[key] = value
+            return
 
         except TypeError as e:
             # python 3 type errors should be raised

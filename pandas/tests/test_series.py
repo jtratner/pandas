@@ -935,6 +935,32 @@ class TestSeries(unittest.TestCase, CheckNameIntegration):
         self.assertRaises(Exception, self.series.__setitem__,
                           'foobar', 1)
 
+    def test_setitem_dtypes(self):
+
+        # change dtypes
+        # GH 4463
+        expected = Series([np.nan,2,3])
+
+        s = Series([1,2,3])
+        s.iloc[0] = np.nan
+        assert_series_equal(s,expected)
+
+        s = Series([1,2,3])
+        s.loc[0] = np.nan
+        assert_series_equal(s,expected)
+
+        s = Series([1,2,3])
+        s[0] = np.nan
+        assert_series_equal(s,expected)
+
+        s = Series([False])
+        s.loc[0] = np.nan
+        assert_series_equal(s,Series([np.nan]))
+
+        s = Series([False,True])
+        s.loc[0] = np.nan
+        assert_series_equal(s,Series([np.nan,1.0]))
+
     def test_set_value(self):
         idx = self.ts.index[10]
         res = self.ts.set_value(idx, 0)

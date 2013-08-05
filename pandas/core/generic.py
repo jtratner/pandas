@@ -109,12 +109,12 @@ class NDFrame(PandasObject):
             """
 
         cls._AXIS_ORDERS = axes
-        cls._AXIS_NUMBERS = dict([(a, i) for i, a in enumerate(axes)])
+        cls._AXIS_NUMBERS = dict((a, i) for i, a in enumerate(axes))
         cls._AXIS_LEN = len(axes)
         cls._AXIS_ALIASES = aliases or dict()
-        cls._AXIS_IALIASES = dict([(v, k)
-                                  for k, v in cls._AXIS_ALIASES.items()])
-        cls._AXIS_NAMES = dict([(i, a) for i, a in enumerate(axes)])
+        cls._AXIS_IALIASES = dict((v, k)
+                                  for k, v in cls._AXIS_ALIASES.items())
+        cls._AXIS_NAMES = dict(enumerate(axes))
         cls._AXIS_SLICEMAP = slicers or None
         cls._AXIS_REVERSED = axes_are_reversed
 

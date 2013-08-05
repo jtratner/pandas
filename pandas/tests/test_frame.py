@@ -407,6 +407,16 @@ class CheckIndexing(object):
             self.frame[dtype] = np.array(arr,dtype=dtype)
             self.assert_(self.frame[dtype].dtype.name == dtype)
 
+        # dtype changing GH4204
+        df = DataFrame([[0,0]])
+        df.iloc[0] = np.nan
+        expected = DataFrame([[np.nan,np.nan]])
+        assert_frame_equal(df,expected)
+
+        df = DataFrame([[0,0]])
+        df.loc[0] = np.nan
+        assert_frame_equal(df,expected)
+
     def test_setitem_tuple(self):
         self.frame['A', 'B'] = self.frame['A']
         assert_series_equal(self.frame['A', 'B'], self.frame['A'])
