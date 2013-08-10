@@ -7,12 +7,9 @@ import collections
 import numbers
 import codecs
 import csv
-import sys
-
-from datetime import timedelta
+import types
 
 from distutils.version import LooseVersion
-
 from numpy.lib.format import read_array, write_array
 import numpy as np
 
@@ -20,12 +17,21 @@ import pandas.algos as algos
 import pandas.lib as lib
 import pandas.tslib as tslib
 from pandas import compat
-from pandas.compat import (StringIO, BytesIO, range, long, u, zip, map,
-                           string_types)
-from datetime import timedelta
-
+from pandas.compat import StringIO, BytesIO, range, long, u, zip, map
 from pandas.core.config import get_option
 from pandas.core import array as pa
+
+# XXX: HACK for NumPy 1.5.1 to suppress warnings
+# TODO: Decide if this is necessary to still have this hack
+try:
+    np.seterr(all='ignore')
+    # np.set_printoptions(suppress=True)
+except Exception:  # pragma: no cover
+    pass
+
+_np_version = np.version.short_version
+_np_version_under1p6 = LooseVersion(_np_version) < '1.6'
+_np_version_under1p7 = LooseVersion(_np_version) < '1.7'
 
 class PandasError(Exception):
     pass
@@ -73,6 +79,31 @@ class _ABCGeneric(type):
 
 
 ABCGeneric = _ABCGeneric("ABCGeneric", tuple(), {})
+
+
+def bind_method(cls, name, func):
+    """Bind a method to class, python 2 and python 3 compatible.
+
+    Parameters
+    ----------
+
+    cls : type
+        class to receive bound method
+    name : basestring
+        name of method on class instance
+    func : function
+        function to be bound as method
+
+
+    Returns
+    -------
+    None
+    """
+    # only python 2 has bound/unbound method issue
+    if not compat.PY3:
+        setattr(cls, name, types.MethodType(func, None, cls))
+    else:
+        setattr(cls, name, func)
 
 def isnull(obj):
     """Detect missing values (NaN in numeric arrays, None/NaN in object arrays)
@@ -360,10 +391,10 @@ def _take_2d_multi_generic(arr, indexer, out, fill_value, mask_info):
         if col_needs:
             out[:, col_mask] = fill_value
     for i in range(len(row_idx)):
-        u = row_idx[i]
+        u_ = row_idx[i]
         for j in range(len(col_idx)):
             v = col_idx[j]
-            out[i, j] = arr[u, v]
+            out[i, j] = arr[u_, v]
 
 
 def _take_nd_generic(arr, indexer, out, axis, fill_value, mask_info):
@@ -2348,3 +2379,10 @@ def save(obj, path):  # TODO remove in 0.13
     warnings.warn("save is deprecated, use obj.to_pickle", FutureWarning)
     from pandas.io.pickle import to_pickle
     return to_pickle(obj, path)
+
+
+def _maybe_match_name(a, b):
+    name = None
+    if a.name == b.name:
+        name = a.name
+    return name

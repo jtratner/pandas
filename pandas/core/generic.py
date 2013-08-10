@@ -18,9 +18,7 @@ import pandas.core.datetools as datetools
 from pandas import compat, _np_version_under1p7
 from pandas.compat import map, zip, lrange
 from pandas.core.common import (isnull, notnull, is_list_like,
-                                _values_from_object,
-                                _infer_dtype_from_scalar, _maybe_promote,
-                                ABCSeries)
+                                _values_from_object, _maybe_promote, ABCSeries)
 
 def is_dictlike(x):
     return isinstance(x, (dict, com.ABCSeries))
@@ -2891,6 +2889,9 @@ class NDFrame(PandasObject):
             self._clear_item_cache()
 
         return new_obj
+
+
+
 
 # install the indexerse
 for _name, _indexer in indexing.get_indexers_list():
