@@ -598,6 +598,9 @@ class Series(generic.NDFrame):
             object.__setattr__(self, '_subtyp', 'series')
 
     # ndarray compatibility
+    def item(self):
+        return self.values.item()
+
     @property
     def flags(self):
         return self.values.flags

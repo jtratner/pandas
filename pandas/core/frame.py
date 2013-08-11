@@ -411,7 +411,12 @@ class DataFrame(NDFrame):
                     columns = data_columns
                 mgr = self._init_dict(data, index, columns, dtype=dtype)
             else:
-                mgr = self._init_ndarray(data, index, columns, dtype=dtype,
+                name = getattr(data,'name',None)
+                if name is not None or isinstance(data, Series):
+                    name = name or 0
+                    mgr = self._init_dict({ name : data }, index, columns, dtype=dtype)
+                else:
+                    mgr = self._init_ndarray(data, index, columns, dtype=dtype,
                                          copy=copy)
         elif isinstance(data, list):
             if len(data) > 0:
@@ -4853,9 +4858,12 @@ def _prep_ndarray(values, copy=True):
         # we could have a 1-dim or 2-dim list here
         # this is equiv of np.asarray, but does object conversion
         # and platform dtype preservation
-        if com.is_list_like(values[0]) or hasattr(values[0], 'len'):
-            values = np.array([convert(v) for v in values])
-        else:
+        try:
+            if com.is_list_like(values[0]) or hasattr(values[0], 'len'):
+                values = np.array([convert(v) for v in values])
+            else:
+                values = convert(values)
+        except:
             values = convert(values)
 
     else:
@@ -4945,18 +4953,23 @@ def _list_of_series_to_arrays(data, columns, coerce_float=False, dtype=None):
     from pandas.core.index import _get_combined_index
 
     if columns is None:
-        columns = _get_combined_index([s.index for s in data])
+        columns = _get_combined_index([s.index for s in data if getattr(s,'index',None) is not None ])
 
     indexer_cache = {}
 
     aligned_values = []
     for s in data:
-        index = s.index
+        index = getattr(s,'index',None)
+        if index is None:
+            index = _default_index(len(s))
+
         if id(index) in indexer_cache:
             indexer = indexer_cache[id(index)]
         else:
             indexer = indexer_cache[id(index)] = index.get_indexer(columns)
-        aligned_values.append(com.take_1d(s.values, indexer))
+
+        values = _values_from_object(s)
+        aligned_values.append(com.take_1d(values, indexer))
 
     values = np.vstack(aligned_values)
 
@@ -5000,13 +5013,13 @@ def _convert_object_array(content, columns, coerce_float=False, dtype=None):
 
 def _get_names_from_index(data):
     index = lrange(len(data))
-    has_some_name = any([s.name is not None for s in data])
+    has_some_name = any([getattr(s,'name',None) is not None for s in data])
     if not has_some_name:
         return index
 
     count = 0
     for i, s in enumerate(data):
-        n = s.name
+        n = getattr(s,'name',None)
         if n is not None:
             index[i] = n
         else:

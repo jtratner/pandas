@@ -2382,6 +2382,18 @@ class TestSeries(unittest.TestCase, CheckNameIntegration):
         expected = tsdf.max()
         assert_series_equal(result,expected)
 
+        # .item()
+        s = Series([1])
+        result = s.item()
+        self.assert_(result == 1)
+        self.assert_(s.item() == s.iloc[0])
+
+        # using an ndarray like function
+        s = Series(np.random.randn(10))
+        result = np.ones_like(s)
+        expected = Series(1,index=range(10),dtype='float64')
+        #assert_series_equal(result,expected)
+
     def test_underlying_data_conversion(self):
 
         # GH 4080
