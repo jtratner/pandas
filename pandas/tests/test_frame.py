@@ -7729,6 +7729,7 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
         result = df[df>stamp]
         expected = df.copy()
         expected.loc[[0,1],'A'] = np.nan
+        expected['C'] = np.nan
         assert_frame_equal(result,expected)
 
     def test_mask(self):

@@ -323,7 +323,11 @@ def _comp_method(func, name, str_rep):
 
             # straight boolean comparisions we want to allow all columns
             # (regardless of dtype to pass thru)
-            return self._combine_const(other, func, raise_on_error = False).fillna(True).astype(bool)
+            if func == operator.ne:
+                masker = True
+            else:
+                masker = False
+            return self._combine_const(other, func, raise_on_error = False).fillna(masker).astype(bool)
 
     f.__name__ = name
 
