@@ -248,7 +248,7 @@ class CheckIndexing(object):
             # add back other columns to compare
             for c in df.columns:
                 if c not in bifw:
-                    bifw[c] = df[c]
+                    bifw[c] = bif[c]
             bifw = bifw.reindex(columns = df.columns)
 
             assert_frame_equal(bif, bifw, check_dtype=False)
