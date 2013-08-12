@@ -1,11 +1,8 @@
 # pylint: disable=W0231,E1101
 import warnings
-from pandas import compat
 import operator
 import weakref
 import numpy as np
-import pandas.lib as lib
-from pandas.core.base import PandasObject
 
 from pandas.core.index import Index, MultiIndex, _ensure_index
 import pandas.core.indexing as indexing
@@ -14,6 +11,7 @@ from pandas.tseries.index import DatetimeIndex
 from pandas.core.internals import BlockManager
 import pandas.lib as lib
 import pandas.core.common as com
+from pandas import compat
 from pandas.compat import map, zip
 from pandas.core.common import (isnull, notnull, is_list_like,
                                 _values_from_object,
@@ -153,7 +151,7 @@ class NDFrame(PandasObject):
 
     def _construct_axes_dict(self, axes=None, **kwargs):
         """ return an axes dictionary for myself """
-        d = dict([(a, self._get_axis(a)) for a in (axes or self._AXIS_ORDERS)])
+        d = dict([(a, getattr(self, a)) for a in (axes or self._AXIS_ORDERS)])
         d.update(kwargs)
         return d
 
@@ -268,23 +266,6 @@ class NDFrame(PandasObject):
         """ we do it this way because if we have reversed axes, then
         the block manager shows then reversed """
         return [self._get_axis(a) for a in self._AXIS_ORDERS]
-
-    def _construct_axes_dict(self, axes=None, **kwargs):
-        """ return an axes dictionary for myself """
-        d = dict([(a, getattr(self, a)) for a in (axes or self._AXIS_ORDERS)])
-        d.update(kwargs)
-        return d
-
-    @staticmethod
-    def _construct_axes_dict_from(self, axes, **kwargs):
-        """ return an axes dictionary for the passed axes """
-        d = dict([(a, ax) for a, ax in zip(self._AXIS_ORDERS, axes)])
-        d.update(kwargs)
-        return d
-
-    @property
-    def values(self):
-        return self._data.as_matrix()
 
     @property
     def ndim(self):
@@ -443,9 +424,6 @@ class NDFrame(PandasObject):
     def _indexed_same(self, other):
         return all([self._get_axis(a).equals(other._get_axis(a)) for a in self._AXIS_ORDERS])
 
-    def reindex(self, *args, **kwds):
-        raise NotImplementedError
-
     def __neg__(self):
         arr = operator.neg(_values_from_object(self))
         return self._wrap_array(arr, self.axes, copy=False)
@@ -456,9 +434,6 @@ class NDFrame(PandasObject):
 
     #----------------------------------------------------------------------
     # Iteration
-
-    def __hash__(self):
-        raise TypeError
 
     def __iter__(self):
         """
@@ -480,7 +455,6 @@ class NDFrame(PandasObject):
         warnings.warn("iterkv is deprecated and will be removed in a future "
                       "release, use ``iteritems`` instead.", DeprecationWarning)
         return self.iteritems(*args, **kwargs)
-
 
     def __len__(self):
         """Returns length of info axis """
@@ -1290,6 +1264,7 @@ class NDFrame(PandasObject):
 
     def get_ftype_counts(self):
         """ return the counts of ftypes in this frame """
+        from pandas import Series
         return Series(self._data.get_ftype_counts())
 
     def as_blocks(self, columns=None):
@@ -1734,7 +1709,7 @@ class NDFrame(PandasObject):
 
         method = com._clean_fill_method(method)
 
-        if isinstance(to_replace, (dict, Series)):
+        if isinstance(to_replace, (dict, com.ABCSeries)):
             if axis == 0:
                 return self.replace(to_replace, method=method, inplace=inplace,
                                     limit=limit, axis=axis)
@@ -1992,11 +1967,6 @@ class NDFrame(PandasObject):
         start_date = start = self.index[-1] - offset
         start = self.index.searchsorted(start_date, side='right')
         return self.ix[start:]
-
-    def to_hdf(self, path_or_buf, key, **kwargs):
-        """ activate the HDFStore """
-        from pandas.io import pytables
-        return pytables.to_hdf(path_or_buf, key, self, **kwargs)
 
     def align(self, other, join='outer', axis=None, level=None, copy=True,
               fill_value=np.nan, method=None, limit=None, fill_axis=0):
