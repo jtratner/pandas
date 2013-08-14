@@ -37,13 +37,11 @@ from pandas.core.internals import (BlockManager,
 import pandas.computation.expressions as expressions
 from pandas.computation.eval import eval as _eval
 from pandas.computation.expr import _ensure_scope
-from pandas.core.ops import _radd_compat_SERIES
 from pandas.core.series import Series
 from pandas.compat.scipy import scoreatpercentile as _quantile
 from pandas.compat import(range, zip, lrange, lmap, lzip, StringIO, u,
                           OrderedDict, raise_with_traceback)
 from pandas import compat
-from pandas.util.terminal import get_terminal_size
 from pandas.util.decorators import deprecate, Appender, Substitution
 
 from pandas.tseries.period import PeriodIndex
@@ -4945,17 +4943,9 @@ def boxplot(self, column=None, by=None, ax=None, fontsize=None,
     return ax
 DataFrame.boxplot = boxplot
 
-from pandas.core.ops import(_arith_method_FRAME, _radd_compat_SERIES,
-                            _flex_comp_method_FRAME, _comp_method_FRAME)
+ops.add_flex_arithmetic_methods(DataFrame, **ops.frame_flex_funcs)
+ops.add_special_arithmetic_methods(DataFrame, **ops.frame_special_funcs)
 
-ops.add_flex_arithmetic_methods(DataFrame, _arith_method_FRAME,
-                                radd_func=_radd_compat_SERIES,
-                                flex_comp_method=_flex_comp_method_FRAME)
-ops.add_special_arithmetic_methods(DataFrame,
-                                   _arith_method_FRAME,
-                                   radd_func=_radd_compat_SERIES,
-                                   comp_method=_comp_method_FRAME,
-                                   bool_method=_arith_method_FRAME)
 if __name__ == '__main__':
     import nose
     nose.runmodule(argv=[__file__, '-vvs', '-x', '--pdb', '--pdb-failure'],
