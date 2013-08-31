@@ -541,7 +541,7 @@ def take_nd(arr, indexer, axis=0, out=None, fill_value=np.nan,
                     mask_info = mask, needs_masking
                 if needs_masking:
                     if out is not None and out.dtype != dtype:
-                        raise Exception('Incompatible type for fill_value')
+                        raise TypeError('Incompatible type for fill_value')
                 else:
                     # if not, then depromote, set fill_value to dummy
                     # (it won't be used but we don't want the cython code
@@ -612,7 +612,7 @@ def take_2d_multi(arr, indexer, out=None, fill_value=np.nan,
                     mask_info = (row_mask, col_mask), (row_needs, col_needs)
                 if row_needs or col_needs:
                     if out is not None and out.dtype != dtype:
-                        raise Exception('Incompatible type for fill_value')
+                        raise TypeError('Incompatible type for fill_value')
                 else:
                     # if not, then depromote, set fill_value to dummy
                     # (it won't be used but we don't want the cython code
