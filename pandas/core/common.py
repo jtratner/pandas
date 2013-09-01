@@ -857,8 +857,8 @@ def _maybe_upcast_putmask(result, mask, other, dtype=None, change=None):
 
                 # if we are trying to do something unsafe
                 # like put a bigger dtype in a smaller one, use the smaller one
-                if change.dtype.itemsize < r.dtype.itemsize:
-                    raise TypeError(
+                if change.dtype.itemsize < r.dtype.itemsize: # pragma: no cover
+                    raise AssertionError(
                         "cannot change dtype of input to smaller size")
                 change.dtype = r.dtype
                 change[:] = r
@@ -1159,8 +1159,8 @@ def interpolate_2d(values, method='pad', axis=0, limit=None, fill_value=None):
     # reshape a 1 dim if needed
     ndim = values.ndim
     if values.ndim == 1:
-        if axis != 0:
-            raise ValueError("cannot interpolate on a ndim == 1 with axis != 0")
+        if axis != 0: # pragma: no cover
+            raise AssertionError("cannot interpolate on a ndim == 1 with axis != 0")
         values = values.reshape(tuple((1,) + values.shape))
 
     if fill_value is None:

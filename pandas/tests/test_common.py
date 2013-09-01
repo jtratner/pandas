@@ -22,7 +22,8 @@ _multiprocess_can_split_ = True
 
 def test_mut_exclusive():
     with tm.assertRaisesRegexp(TypeError,
-                               "mutually exclusive arguments: 'a' and 'b'"):
+                               "mutually exclusive arguments: "
+                               "'[ab]' and '[ab]'"):
         com._mut_exclusive(a=1, b=2)
     assert com._mut_exclusive(a=1, b=None) == 1
     assert com._mut_exclusive(major=None, major_axis=None) is None
