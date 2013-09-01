@@ -1434,14 +1434,17 @@ def ensure_float(arr):
     return arr
 
 
-def _mut_exclusive(arg1, arg2):
-    if arg1 is not None and arg2 is not None:
-        # raise BaseException('mutually exclusive arguments')
-        pass
-    elif arg1 is not None:
-        return arg1
+def _mut_exclusive(**kwargs):
+    item1, item2 = kwargs.items()
+    label1, val1 = item1
+    label2, val2 = item2
+    if val1 is not None and val2 is not None:
+        raise TypeError('mutually exclusive arguments: %r and %r' %
+                        (label1, label2))
+    elif val1 is not None:
+        return val1
     else:
-        return arg2
+        return val2
 
 
 def _any_none(*args):

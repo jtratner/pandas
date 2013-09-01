@@ -20,6 +20,14 @@ import pandas.core.config as cf
 _multiprocess_can_split_ = True
 
 
+def test_mut_exclusive():
+    with tm.assertRaisesRegexp(TypeError,
+                               "mutually exclusive arguments: 'a' and 'b'"):
+        com._mut_exclusive(a=1, b=2)
+    assert com._mut_exclusive(a=1, b=None) == 1
+    assert com._mut_exclusive(major=None, major_axis=None) is None
+
+
 def test_is_sequence():
     is_seq = com._is_sequence
     assert(is_seq((1, 2)))
