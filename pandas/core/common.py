@@ -858,7 +858,7 @@ def _maybe_upcast_putmask(result, mask, other, dtype=None, change=None):
                 # if we are trying to do something unsafe
                 # like put a bigger dtype in a smaller one, use the smaller one
                 if change.dtype.itemsize < r.dtype.itemsize:
-                    raise Exception(
+                    raise TypeError(
                         "cannot change dtype of input to smaller size")
                 change.dtype = r.dtype
                 change[:] = r
@@ -1160,7 +1160,7 @@ def interpolate_2d(values, method='pad', axis=0, limit=None, fill_value=None):
     ndim = values.ndim
     if values.ndim == 1:
         if axis != 0:
-            raise Exception("cannot interpolate on a ndim == 1 with axis != 0")
+            raise ValueError("cannot interpolate on a ndim == 1 with axis != 0")
         values = values.reshape(tuple((1,) + values.shape))
 
     if fill_value is None:
@@ -1436,7 +1436,8 @@ def ensure_float(arr):
 
 def _mut_exclusive(arg1, arg2):
     if arg1 is not None and arg2 is not None:
-        raise Exception('mutually exclusive arguments')
+        # raise BaseException('mutually exclusive arguments')
+        pass
     elif arg1 is not None:
         return arg1
     else:
