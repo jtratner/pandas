@@ -16,6 +16,7 @@ from pandas.io.excel import (
     register_writer
 )
 from pandas.util.testing import ensure_clean
+from pandas.core.config import set_option, get_option
 import pandas.util.testing as tm
 import pandas as pd
 
@@ -277,6 +278,12 @@ class ExcelWriterBase(SharedItems):
     def setUp(self):
         self.check_skip()
         super(ExcelWriterBase, self).setUp()
+        self.option_name = 'io.excel.%s.writer' % self.ext
+        self.prev_engine = get_option(self.option_name)
+        set_option(self.option_name, self.engine_name)
+
+    def tearDown(self):
+        set_option(self.option_name, self.prev_engine)
 
     def test_excel_sheet_by_name_raise(self):
         _skip_if_no_xlrd()
@@ -790,6 +797,7 @@ class ExcelWriterBase(SharedItems):
 
 class OpenpyxlTests(ExcelWriterBase, unittest.TestCase):
     ext = 'xlsx'
+    engine_name = 'openpyxl'
     check_skip = staticmethod(_skip_if_no_openpyxl)
 
     def test_to_excel_styleconverter(self):
@@ -820,6 +828,7 @@ class OpenpyxlTests(ExcelWriterBase, unittest.TestCase):
 
 class XlwtTests(ExcelWriterBase, unittest.TestCase):
     ext = 'xls'
+    engine_name = 'xlwt'
     check_skip = staticmethod(_skip_if_no_xlwt)
 
     def test_to_excel_styleconverter(self):
