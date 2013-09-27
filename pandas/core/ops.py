@@ -455,10 +455,11 @@ class _TimeOp(object):
         is_datetime_lhs  = com.is_datetime64_dtype(left)
         if not (is_datetime_lhs or is_timedelta_lhs):
             return None
-        # rops currently disabled
-        if name.startswith('__r'):
+        # rops currently disabled - but radd allowed
+        if name.startswith('__r') and 'radd' not in name:
             return NotImplemented
-
+        if 'radd' in name:
+            name = '__add__'
         return cls(left, right, name)
 
 
