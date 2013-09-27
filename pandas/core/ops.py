@@ -472,10 +472,8 @@ def _arith_method_SERIES(op, name, str_rep=None, fill_zeros=None, default_axis=N
     """
     def na_op(x, y):
         try:
-            # TODO: Accelerate this with numexpr
-            result = op(x, y)
-            result = com._fill_zeros(result, y, fill_zeros)
-
+            result = expressions.evaluate(op, str_rep, x, y,
+                                          raise_on_error=True, **eval_kwargs)
         except TypeError:
             result = pa.empty(len(x), dtype=x.dtype)
             if isinstance(y, (pa.Array, com.ABCSeries)):
@@ -487,6 +485,7 @@ def _arith_method_SERIES(op, name, str_rep=None, fill_zeros=None, default_axis=N
 
             result, changed = com._maybe_upcast_putmask(result, -mask, pa.NA)
 
+        result = com._fill_zeros(result, y, fill_zeros)
         return result
 
     def wrapper(left, right, name=name):
@@ -983,6 +982,20 @@ frame_special_funcs = dict(arith_method=_arith_method_FRAME,
 
 # exact copy of original panel method (with different signature)
 def _arith_method_PANEL(op, name, str_rep=None, fill_zeros=None, default_axis=None, **eval_kwargs):
+    # copied from Series na_op above, but without unnecessary branch for
+    # non-scalar
+    def na_op(x, y):
+        try:
+            result = expressions.evaluate(op, str_rep, x, y,
+                                          raise_on_error=True, **eval_kwargs)
+        except TypeError:
+            result = pa.empty(len(x), dtype=x.dtype)
+            mask = notnull(x)
+            result[mask] = op(x[mask], y)
+            result, changed = com._maybe_upcast_putmask(result, -mask, pa.NA)
+
+        result = com._fill_zeros(result, y, fill_zeros)
+        return result
     # work only for scalars
 
     def f(self, other):
@@ -1018,7 +1031,8 @@ def _comp_method_PANEL(op, name, str_rep=None, masker=False):
 
     def na_op(x, y):
         try:
-            result = op(x, y)
+            result = expressions.evaluate(op, str_rep, x, y,
+                                          raise_on_error=True, **eval_kwargs)
         except TypeError:
             xrav = x.ravel()
             result = np.empty(x.size, dtype=x.dtype)
