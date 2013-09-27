@@ -87,12 +87,13 @@ def _create_methods(arith_method, radd_func, comp_method, bool_method,
     if bool_method:
         new_methods.update(dict(
         and_=bool_method(operator.and_, names('and_ [&]'), op('&')),
-        rand_=bool_method(lambda x, y: operator.and_(y, x), names('rand_[&]')),
+        # causes the scalar na_cmps test to fail
+        # rand_=bool_method(lambda x, y: operator.and_(y, x), names('rand_[&]')),
         or_=bool_method(operator.or_, names('or_ [|]'), op('|')),
-        ror_=bool_method(lambda x, y: operator.or_(y, x), names('ror_ [|]')),
+        # ror_=bool_method(lambda x, y: operator.or_(y, x), names('ror_ [|]')),
         # For some reason ``^`` wasn't used in original.
         xor=bool_method(operator.xor, names('xor [^]')),
-        rxor=bool_method(lambda x, y: operator.xor(y, x), names('rxor [^]'))
+        # rxor=bool_method(lambda x, y: operator.xor(y, x), names('rxor [^]'))
         ))
 
     new_methods = dict((names(k), v) for k, v in new_methods.items())
