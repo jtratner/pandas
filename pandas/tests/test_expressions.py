@@ -4,38 +4,20 @@ from __future__ import print_function
 import unittest
 import nose
 
-from numpy.random import randn
-
-import operator
-import operator
-from numpy import random, nan
-from numpy.random import randn
 import operator
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from pandas.core.api import DataFrame
-from pandas.computation import expressions as expr
-import pandas as pan
-from pandas.core.api import DataFrame, Series, notnull, isnull
 from pandas.core.api import DataFrame, Panel
+from pandas.computation import expressions as expr
+from pandas import compat
 
-from pandas.util.testing import assert_series_equal, assert_frame_equal
-from pandas.util.testing import (assert_almost_equal,
-                                 assert_series_equal,
-                                 assert_frame_equal)
 from pandas.util.testing import (assert_almost_equal, assert_series_equal,
                                  assert_frame_equal, assert_panel_equal,
                                  assert_panel4d_equal)
-from pandas import compat
-
 import pandas.util.testing as tm
-import pandas.lib as lib
-
 from numpy.testing.decorators import slow
-import pandas.util.testing as tm
 
-from numpy.testing.decorators import slow
 
 if not expr._USE_NUMEXPR:
     raise nose.SkipTest("numexpr not available")
