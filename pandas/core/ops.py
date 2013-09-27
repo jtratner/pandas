@@ -981,7 +981,8 @@ frame_special_funcs = dict(arith_method=_arith_method_FRAME,
 
 
 # exact copy of original panel method (with different signature)
-def _arith_method_PANEL(op, name, str_rep=None, fill_zeros=None, default_axis=None, **eval_kwargs):
+def _arith_method_PANEL(op, name, str_rep=None, fill_zeros=None,
+                        default_axis=None, **eval_kwargs):
     # copied from Series na_op above, but without unnecessary branch for
     # non-scalar
     def na_op(x, y):
@@ -1032,10 +1033,10 @@ def _comp_method_PANEL(op, name, str_rep=None, masker=False):
     def na_op(x, y):
         try:
             result = expressions.evaluate(op, str_rep, x, y,
-                                          raise_on_error=True, **eval_kwargs)
+                                          raise_on_error=True)
         except TypeError:
             xrav = x.ravel()
-            result = np.empty(x.size, dtype=x.dtype)
+            result = np.empty(x.size, dtype=bool)
             if isinstance(y, np.ndarray):
                 yrav = y.ravel()
                 mask = notnull(xrav) & notnull(yrav)
@@ -1056,7 +1057,7 @@ def _comp_method_PANEL(op, name, str_rep=None, masker=False):
     @Appender('Wrapper for comparison method %s' % name)
     def f(self, other):
         if isinstance(other, self._constructor):
-            return self._compare_constructor(other, op)
+            return self._compare_constructor(other, na_op)
         elif isinstance(other, (self._constructor_sliced, com.ABCDataFrame,
                                 com.ABCSeries)):
             raise Exception("input needs alignment for this object [%s]" %
