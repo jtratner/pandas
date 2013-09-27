@@ -3,7 +3,7 @@ Contains data structures designed for manipulating panel (3-dimensional) data
 """
 # pylint: disable=E1103,W0231,W0212,W0621
 
-from pandas.compat import map, zip, range, lrange, u, OrderedDict, OrderedDefaultdict
+from pandas.compat import zip, range, lrange, u, OrderedDict, OrderedDefaultdict
 from pandas import compat
 import sys
 import numpy as np
@@ -22,6 +22,7 @@ from pandas.util.decorators import deprecate, Appender, Substitution
 import pandas.core.common as com
 import pandas.core.ops as ops
 import pandas.core.nanops as nanops
+import pandas.computation.expressions as expressions
 
 
 def _ensure_like_indices(time, panels):
