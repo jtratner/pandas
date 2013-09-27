@@ -749,6 +749,7 @@ result : DataFrame
 """
 
 
+# Just copy of _arith_method from DataFrame
 def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zeros=None, **eval_kwargs):
     def na_op(x, y):
         try:
@@ -775,6 +776,7 @@ def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zer
     @Appender(_arith_doc_FRAME % name)
     def f(self, other, axis=default_axis, level=None, fill_value=None):
         from pandas.core.series import Series
+        from pandas.core.frame import DataFrame
 
         if isinstance(other, com.ABCDataFrame):    # Another DataFrame
             return self._combine_frame(other, na_op, fill_value, level)
@@ -782,27 +784,27 @@ def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zer
             return self._combine_series(other, na_op, fill_value, axis, level)
         elif isinstance(other, (list, tuple)):
             if axis is not None and self._get_axis_name(axis) == 'index':
-                casted = self._constructor_sliced(other, index=self.index)
-                # casted = Series(other, index=self.index)
+                # casted = self._constructor_sliced(other, index=self.index)
+                casted = Series(other, index=self.index)
             else:
-                casted = self._constructor_sliced(other, index=self.columns)
-                # casted = Series(other, index=self.columns)
+                # casted = self._constructor_sliced(other, index=self.columns)
+                casted = Series(other, index=self.columns)
             return self._combine_series(casted, na_op, fill_value, axis, level)
         elif isinstance(other, np.ndarray):
             if other.ndim == 1:
                 if axis is not None and self._get_axis_name(axis) == 'index':
-                    casted = self._constructor_sliced(other, index=self.index)
-                    # casted = Series(other, index=self.index)
+                    # casted = self._constructor_sliced(other, index=self.index)
+                    casted = Series(other, index=self.index)
                 else:
-                    casted = self._constructor_sliced(other, index=self.columns)
-                    # casted = Series(other, index=self.columns)
+                    # casted = self._constructor_sliced(other, index=self.columns)
+                    casted = Series(other, index=self.columns)
                 return self._combine_series(casted, na_op, fill_value,
                                             axis, level)
             elif other.ndim == 2:
-                casted = self._constructor(other, index=self.index,
-                                           columns=self.columns)
-                # casted = DataFrame(other, index=self.index,
-                #                  columns=self.columns)
+                # casted = self._constructor(other, index=self.index,
+                                           # columns=self.columns)
+                casted = DataFrame(other, index=self.index,
+                                 columns=self.columns)
                 return self._combine_frame(casted, na_op, fill_value, level)
             else:
                 raise ValueError("Incompatible argument shape: %s" %
@@ -815,14 +817,38 @@ def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zer
     return f
 
 
-def _flex_comp_method_FRAME(op, name, str_rep=None, default_axis='columns',
-                            masker=False):
+# Masker unused for now
+# Just copy of original _flex_comp_method from DataFrame
+def _flex_comp_method_FRAME(op, name, str_rep=None, default_axis='columns', masker=False):
 
-    na_op = partial(_standard_na_op, op=op, str_rep=str_rep, convert_mask=True,
-                    masker=masker)
+    def na_op(x, y):
+        try:
+            result = op(x, y)
+        except TypeError:
+            xrav = x.ravel()
+            result = np.empty(x.size, dtype=x.dtype)
+            if isinstance(y, (np.ndarray, com.ABCSeries)):
+                yrav = y.ravel()
+                mask = notnull(xrav) & notnull(yrav)
+                result[mask] = op(np.array(list(xrav[mask])),
+                                  np.array(list(yrav[mask])))
+            else:
+                mask = notnull(xrav)
+                result[mask] = op(np.array(list(xrav[mask])), y)
+
+            if op == operator.ne:  # pragma: no cover
+                np.putmask(result, -mask, True)
+            else:
+                np.putmask(result, -mask, False)
+            result = result.reshape(x.shape)
+
+        return result
 
     @Appender('Wrapper for flexible comparison methods %s' % name)
     def f(self, other, axis=default_axis, level=None):
+        from pandas.core.frame import DataFrame
+        from pandas.core.series import Series
+
         if isinstance(other, com.ABCDataFrame):    # Another DataFrame
             return self._flex_compare_frame(other, na_op, str_rep, level)
 
@@ -831,24 +857,24 @@ def _flex_comp_method_FRAME(op, name, str_rep=None, default_axis='columns',
 
         elif isinstance(other, (list, tuple)):
             if axis is not None and self._get_axis_name(axis) == 'index':
-                casted = self._constructor_sliced(other, index=self.index)
+                casted = Series(other, index=self.index)
             else:
-                casted = self._constructor_sliced(other, index=self.columns)
+                casted = Series(other, index=self.columns)
 
             return self._combine_series(casted, na_op, None, axis, level)
 
         elif isinstance(other, np.ndarray):
             if other.ndim == 1:
                 if axis is not None and self._get_axis_name(axis) == 'index':
-                    casted = self._constructor_sliced(other, index=self.index)
+                    casted = Series(other, index=self.index)
                 else:
-                    casted = self._constructor_sliced(other, index=self.columns)
+                    casted = Series(other, index=self.columns)
 
                 return self._combine_series(casted, na_op, None, axis, level)
 
             elif other.ndim == 2:
-                casted = self._constructor(other, index=self.index,
-                                           columns=self.columns)
+                casted = DataFrame(other, index=self.index,
+                                   columns=self.columns)
 
                 return self._flex_compare_frame(casted, na_op, str_rep, level)
 
@@ -862,8 +888,56 @@ def _flex_comp_method_FRAME(op, name, str_rep=None, default_axis='columns',
     f.__name__ = name
 
     return f
+# def _flex_comp_method_FRAME(op, name, str_rep=None, default_axis='columns',
+#                             masker=False):
+
+#     na_op = partial(_standard_na_op, op=op, str_rep=str_rep, convert_mask=True,
+#                     masker=masker)
+
+#     @Appender('Wrapper for flexible comparison methods %s' % name)
+#     def f(self, other, axis=default_axis, level=None):
+#         if isinstance(other, com.ABCDataFrame):    # Another DataFrame
+#             return self._flex_compare_frame(other, na_op, str_rep, level)
+
+#         elif isinstance(other, com.ABCSeries):
+#             return self._combine_series(other, na_op, None, axis, level)
+
+#         elif isinstance(other, (list, tuple)):
+#             if axis is not None and self._get_axis_name(axis) == 'index':
+#                 casted = self._constructor_sliced(other, index=self.index)
+#             else:
+#                 casted = self._constructor_sliced(other, index=self.columns)
+
+#             return self._combine_series(casted, na_op, None, axis, level)
+
+#         elif isinstance(other, np.ndarray):
+#             if other.ndim == 1:
+#                 if axis is not None and self._get_axis_name(axis) == 'index':
+#                     casted = self._constructor_sliced(other, index=self.index)
+#                 else:
+#                     casted = self._constructor_sliced(other, index=self.columns)
+
+#                 return self._combine_series(casted, na_op, None, axis, level)
+
+#             elif other.ndim == 2:
+#                 casted = self._constructor(other, index=self.index,
+#                                            columns=self.columns)
+
+#                 return self._flex_compare_frame(casted, na_op, str_rep, level)
+
+#             else:
+#                 raise ValueError("Incompatible argument shape: %s" %
+#                                  (other.shape,))
+
+#         else:
+#             return self._combine_const(other, na_op)
+
+#     f.__name__ = name
+
+#     return f
 
 
+# direct copy of method from pandas/core/frame
 def _comp_method_FRAME(func, name, str_rep, masker=False):
     @Appender('Wrapper for comparison method %s' % name)
     def f(self, other):
