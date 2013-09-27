@@ -750,12 +750,32 @@ result : DataFrame
 
 
 def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zeros=None, **eval_kwargs):
-    na_op = partial(_standard_na_op, op=op, str_rep=str_rep,
-                    fill_zeros=fill_zeros, convert_mask=False,
-                    eval_kwargs=eval_kwargs)
+    def na_op(x, y):
+        try:
+            result = expressions.evaluate(
+                op, str_rep, x, y, raise_on_error=True, **eval_kwargs)
+            result = com._fill_zeros(result, y, fill_zeros)
+
+        except TypeError:
+            xrav = x.ravel()
+            result = np.empty(x.size, dtype=x.dtype)
+            if isinstance(y, (np.ndarray, com.ABCSeries)):
+                yrav = y.ravel()
+                mask = notnull(xrav) & notnull(yrav)
+                result[mask] = op(xrav[mask], yrav[mask])
+            else:
+                mask = notnull(xrav)
+                result[mask] = op(xrav[mask], y)
+
+            result, changed = com._maybe_upcast_putmask(result, -mask, np.nan)
+            result = result.reshape(x.shape)
+
+        return result
 
     @Appender(_arith_doc_FRAME % name)
     def f(self, other, axis=default_axis, level=None, fill_value=None):
+        from pandas.core.series import Series
+
         if isinstance(other, com.ABCDataFrame):    # Another DataFrame
             return self._combine_frame(other, na_op, fill_value, level)
         elif isinstance(other, com.ABCSeries):
@@ -763,20 +783,26 @@ def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zer
         elif isinstance(other, (list, tuple)):
             if axis is not None and self._get_axis_name(axis) == 'index':
                 casted = self._constructor_sliced(other, index=self.index)
+                # casted = Series(other, index=self.index)
             else:
                 casted = self._constructor_sliced(other, index=self.columns)
+                # casted = Series(other, index=self.columns)
             return self._combine_series(casted, na_op, fill_value, axis, level)
         elif isinstance(other, np.ndarray):
             if other.ndim == 1:
                 if axis is not None and self._get_axis_name(axis) == 'index':
                     casted = self._constructor_sliced(other, index=self.index)
+                    # casted = Series(other, index=self.index)
                 else:
                     casted = self._constructor_sliced(other, index=self.columns)
+                    # casted = Series(other, index=self.columns)
                 return self._combine_series(casted, na_op, fill_value,
                                             axis, level)
             elif other.ndim == 2:
                 casted = self._constructor(other, index=self.index,
                                            columns=self.columns)
+                # casted = DataFrame(other, index=self.index,
+                #                  columns=self.columns)
                 return self._combine_frame(casted, na_op, fill_value, level)
             else:
                 raise ValueError("Incompatible argument shape: %s" %
