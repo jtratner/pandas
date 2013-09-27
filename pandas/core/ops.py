@@ -284,6 +284,8 @@ def _standard_na_op(x, y, op, str_rep=None, fill_zeros=None,
 
         result = result.reshape(x.shape)
 
+
+# direct copy of original Series _TimeOp
 class _TimeOp(object):
     """
     Wrapper around Series datetime/time/timedelta arithmetic operations.
@@ -459,17 +461,16 @@ class _TimeOp(object):
         return cls(left, right, name)
 
 
+# direct copy of series method with slightly different signature
+# def _arith_method(op, name, fill_zeros=None):
 def _arith_method_SERIES(op, name, str_rep=None, fill_zeros=None, default_axis=None, **eval_kwargs):
     """
     Wrapper function for Series arithmetic operations, to avoid
     code duplication.
     """
-    r_op = name.startswith("__r")
     def na_op(x, y):
         try:
-            # result = expressions.evaluate(op, str_rep, x, y, raise_on_error=True, **eval_kwargs)
-
-            # TODO: Make this use numexpr-accelerated expression
+            # TODO: Accelerate this with numexpr
             result = op(x, y)
             result = com._fill_zeros(result, y, fill_zeros)
 
@@ -485,9 +486,6 @@ def _arith_method_SERIES(op, name, str_rep=None, fill_zeros=None, default_axis=N
             result, changed = com._maybe_upcast_putmask(result, -mask, pa.NA)
 
         return result
-    # na_op = partial(_standard_na_op, op=op, str_rep=str_rep,
-    #                 fill_zeros=fill_zeros, convert_mask=False,
-    #                 eval_kwargs=eval_kwargs)
 
     def wrapper(left, right, name=name):
         from pandas.core.frame import DataFrame
@@ -537,11 +535,10 @@ def _arith_method_SERIES(op, name, str_rep=None, fill_zeros=None, default_axis=N
                 lvalues = lvalues.values
             return left._constructor(wrap_results(na_op(lvalues, rvalues)),
                                      index=left.index, name=left.name, dtype=dtype)
-
-    wrapper.__name__ = name
     return wrapper
 
-
+# Original series comp_method with slight tweak to signature
+# def _comp_method(op, name, masker=False):
 def _comp_method_SERIES(op, name, str_rep=None, masker=False):
     """
     Wrapper function for Series arithmetic operations, to avoid
@@ -571,7 +568,7 @@ def _comp_method_SERIES(op, name, str_rep=None, masker=False):
         return result
 
     def wrapper(self, other):
-        from pandas.core.frame import DataFrame
+        from pandas.core.series import Series
 
         if isinstance(other, com.ABCSeries):
             name = _maybe_match_name(self, other)
@@ -579,7 +576,7 @@ def _comp_method_SERIES(op, name, str_rep=None, masker=False):
                 raise ValueError('Series lengths must match to compare')
             return self._constructor(na_op(self.values, other.values),
                                      index=self.index, name=name)
-        elif isinstance(other, DataFrame):  # pragma: no cover
+        elif isinstance(other, com.ABCDataFrame):  # pragma: no cover
             return NotImplemented
         elif isinstance(other, (pa.Array, com.ABCSeries)):
             if len(self) != len(other):
@@ -605,19 +602,17 @@ def _comp_method_SERIES(op, name, str_rep=None, masker=False):
             # always return a full value series here
             res = _values_from_object(res)
 
-            res = self._constructor(res, index=self.index, name=self.name,
-                                    dtype='bool')
+            res = Series(res, index=self.index, name=self.name, dtype='bool')
 
             # mask out the invalids
             if mask.any():
                 res[mask.values] = masker
 
             return res
-
-    wrapper.__name__ = name
     return wrapper
 
 
+# original Series _bool_method with slight change to signature
 def _bool_method_SERIES(op, name, str_rep=None):
     """
     Wrapper function for Series arithmetic operations, to avoid
@@ -654,11 +649,10 @@ def _bool_method_SERIES(op, name, str_rep=None):
             # scalars
             return self._constructor(na_op(self.values, other),
                                      index=self.index, name=self.name)
-
-    wrapper.__name__ = name
     return wrapper
 
 
+# original Series _radd_compat method
 def _radd_compat_SERIES(left, right):
     radd = lambda x, y: y + x
     # GH #353, NumPy 1.5.1 workaround
@@ -676,6 +670,7 @@ def _radd_compat_SERIES(left, right):
     return output
 
 
+# Copy of original series _flex_method with slightly changed signature
 def _flex_method_SERIES(op, name, str_rep=None, default_axis=None, fill_zeros=None, **eval_kwargs):
     doc = """
     Binary operator %s with support to substitute a fill_value for missing data
@@ -695,21 +690,18 @@ def _flex_method_SERIES(op, name, str_rep=None, default_axis=None, fill_zeros=No
     -------
     result : Series
     """ % name
-    na_op = partial(_standard_na_op, op=op, str_rep=str_rep,
-                    fill_zeros=fill_zeros, convert_mask=False,
-                    eval_kwargs=eval_kwargs)
 
     @Appender(doc)
     def f(self, other, level=None, fill_value=None):
         if isinstance(other, com.ABCSeries):
-            return self._binop(other, na_op, level=level, fill_value=fill_value)
+            return self._binop(other, op, level=level, fill_value=fill_value)
         elif isinstance(other, (pa.Array, com.ABCSeries, list, tuple)):
             if len(other) != len(self):
                 raise ValueError('Lengths must be equal')
-            return self._binop(self._constructor(other, self.index), na_op,
+            return self._binop(self._constructor(other, self.index), op,
                                level=level, fill_value=fill_value)
         else:
-            return self._constructor(na_op(self.values, other), self.index,
+            return self._constructor(op(self.values, other), self.index,
                                      name=self.name)
 
     f.__name__ = name
@@ -722,6 +714,7 @@ series_special_funcs = dict(arith_method=_arith_method_SERIES,
                             radd_func=_radd_compat_SERIES,
                             comp_method=_comp_method_SERIES,
                             bool_method=_bool_method_SERIES)
+
 
 _arith_doc_FRAME = """
 Binary operator %s with support to substitute a fill_value for missing data in
@@ -749,7 +742,7 @@ result : DataFrame
 """
 
 
-# Just copy of _arith_method from DataFrame
+# Direct copy of _arith_method from DataFrame
 def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zeros=None, **eval_kwargs):
     def na_op(x, y):
         try:
