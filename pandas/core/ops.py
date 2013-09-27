@@ -655,7 +655,7 @@ def _bool_method_SERIES(op, name, str_rep=None):
 
 
 # original Series _radd_compat method
-def _radd_compat_SERIES(left, right):
+def _radd_compat(left, right):
     radd = lambda x, y: y + x
     # GH #353, NumPy 1.5.1 workaround
     try:
@@ -710,10 +710,10 @@ def _flex_method_SERIES(op, name, str_rep=None, default_axis=None, fill_zeros=No
     return f
 
 series_flex_funcs = dict(flex_arith_method=_flex_method_SERIES,
-                         radd_func=_radd_compat_SERIES,
+                         radd_func=_radd_compat,
                          flex_comp_method=_comp_method_SERIES)
 series_special_funcs = dict(arith_method=_arith_method_SERIES,
-                            radd_func=_radd_compat_SERIES,
+                            radd_func=_radd_compat,
                             comp_method=_comp_method_SERIES,
                             bool_method=_bool_method_SERIES)
 
@@ -951,11 +951,11 @@ def _comp_method_FRAME(func, name, str_rep, masker=False):
     return f
 
 frame_flex_funcs = dict(flex_arith_method=_arith_method_FRAME,
-                        radd_func=_radd_compat_SERIES,
+                        radd_func=_radd_compat,
                         flex_comp_method=_flex_comp_method_FRAME)
 
 frame_special_funcs = dict(arith_method=_arith_method_FRAME,
-                           radd_func=_radd_compat_SERIES,
+                           radd_func=_radd_compat,
                            comp_method=_comp_method_FRAME,
                            bool_method=_arith_method_FRAME)
 
