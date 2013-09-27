@@ -749,8 +749,6 @@ def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zer
         try:
             result = expressions.evaluate(
                 op, str_rep, x, y, raise_on_error=True, **eval_kwargs)
-            result = com._fill_zeros(result, y, fill_zeros)
-
         except TypeError:
             xrav = x.ravel()
             result = np.empty(x.size, dtype=x.dtype)
@@ -764,6 +762,8 @@ def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zer
 
             result, changed = com._maybe_upcast_putmask(result, -mask, np.nan)
             result = result.reshape(x.shape)
+
+        result = com._fill_zeros(result, y, fill_zeros)
 
         return result
 
