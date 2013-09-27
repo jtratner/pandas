@@ -958,37 +958,92 @@ frame_special_funcs = dict(arith_method=_arith_method_FRAME,
                            comp_method=_comp_method_FRAME,
                            bool_method=_arith_method_FRAME)
 
+# def _arith_method_PANEL(op, name, str_rep=None, fill_zeros=None, default_axis=None, **eval_kwargs):
+#     # work only for scalars
+#     def na_op(x, y):
+#         try:
+#             result = expressions.evaluate(op, str_rep, x, y, raise_on_error=True, **eval_kwargs)
+#         except TypeError:
+#             result = op(x, y)
+
+#         # handles discrepancy between numpy and numexpr on division/mod by 0
+#         result = com._fill_zeros(result,y,fill_zeros)
+#         return result
+
+#     def f(self, other):
+#         if not np.isscalar(other):
+#             raise ValueError('Simple arithmetic with %s can only be '
+#                              'done with scalar values' % self._constructor.__name__)
+
+#         return self._combine(other, na_op)
+#     f.__name__ = name
+#     return f
+
+
+# exact copy of original panel method (with different signature)
 def _arith_method_PANEL(op, name, str_rep=None, fill_zeros=None, default_axis=None, **eval_kwargs):
     # work only for scalars
-    def na_op(x, y):
-        try:
-            result = expressions.evaluate(op, str_rep, x, y, raise_on_error=True, **eval_kwargs)
-        except TypeError:
-            result = op(x, y)
-
-        # handles discrepancy between numpy and numexpr on division/mod by 0
-        result = com._fill_zeros(result,y,fill_zeros)
-        return result
 
     def f(self, other):
         if not np.isscalar(other):
             raise ValueError('Simple arithmetic with %s can only be '
                              'done with scalar values' % self._constructor.__name__)
 
-        return self._combine(other, na_op)
+        return self._combine(other, op)
     f.__name__ = name
     return f
 
+# def _comp_method_PANEL(op, name, str_rep=None, masker=False):
+#     na_op = partial(_standard_na_op, op=op, str_rep=str_rep, convert_mask=True,
+#                     masker=masker)
 
+#     @Appender('Wrapper for comparison method %s' % name)
+#     def f(self, other):
+#         if isinstance(other, self._constructor):
+#             return self._compare_constructor(other, op)
+#         elif isinstance(other, (self._constructor_sliced, com.ABCDataFrame, com.ABCSeries)):
+#             raise Exception("input needs alignment for this object [%s]" %
+#                             self._constructor)
+#         else:
+#             return self._combine_const(other, na_op)
+
+#     f.__name__ = name
+
+#     return f
+
+
+# same as original panel function with changed signature
 def _comp_method_PANEL(op, name, str_rep=None, masker=False):
-    na_op = partial(_standard_na_op, op=op, str_rep=str_rep, convert_mask=True,
-                    masker=masker)
+
+    def na_op(x, y):
+        try:
+            result = op(x, y)
+        except TypeError:
+            xrav = x.ravel()
+            result = np.empty(x.size, dtype=x.dtype)
+            if isinstance(y, np.ndarray):
+                yrav = y.ravel()
+                mask = notnull(xrav) & notnull(yrav)
+                result[mask] = op(np.array(list(xrav[mask])),
+                                  np.array(list(yrav[mask])))
+            else:
+                mask = notnull(xrav)
+                result[mask] = op(np.array(list(xrav[mask])), y)
+
+            if op == operator.ne:  # pragma: no cover
+                np.putmask(result, -mask, True)
+            else:
+                np.putmask(result, -mask, False)
+            result = result.reshape(x.shape)
+
+        return result
 
     @Appender('Wrapper for comparison method %s' % name)
     def f(self, other):
         if isinstance(other, self._constructor):
             return self._compare_constructor(other, op)
-        elif isinstance(other, (self._constructor_sliced, com.ABCDataFrame, com.ABCSeries)):
+        elif isinstance(other, (self._constructor_sliced, com.ABCDataFrame,
+                                com.ABCSeries)):
             raise Exception("input needs alignment for this object [%s]" %
                             self._constructor)
         else:
@@ -997,6 +1052,7 @@ def _comp_method_PANEL(op, name, str_rep=None, masker=False):
     f.__name__ = name
 
     return f
+
 
 panel_special_funcs = dict(arith_method=_arith_method_PANEL,
                            comp_method=_comp_method_PANEL,
