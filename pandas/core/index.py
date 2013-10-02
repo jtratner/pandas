@@ -1,6 +1,6 @@
 # pylint: disable=E1101,E1103,W0232
 import datetime
-from functools import partial
+from functools import partial, wraps
 from pandas.compat import range, zip, lrange, lzip, u
 from pandas import compat
 import numpy as np
@@ -10,7 +10,7 @@ import pandas.lib as lib
 import pandas.algos as _algos
 import pandas.index as _index
 from pandas.lib import Timestamp
-from pandas.core.base import FrozenList, FrozenNDArray
+from pandas.core.base import FrozenList, PandasObject
 
 from pandas.util.decorators import cache_readonly, deprecate
 from pandas.core.common import isnull
@@ -56,7 +56,69 @@ def _shouldbe_timestamp(obj):
 
 _Identity = object
 
-class Index(FrozenNDArray):
+class FrozenNDArray(PandasObject, np.ndarray):
+
+    # no __array_finalize__ for now because no metadata
+    def __new__(cls, data, dtype=None, copy=False):
+        if copy is None:
+            copy = not isinstance(data, FrozenNDArray)
+        res = np.array(data, dtype=dtype, copy=copy).view(cls)
+        return res
+
+    def _disabled(self, *args, **kwargs):
+        """This method will not function because object is immutable."""
+        raise TypeError("'%s' does not support mutable operations." %
+                        self.__class__)
+
+    __setitem__ = __setslice__ = __delitem__ = __delslice__ = _disabled
+    put = itemset = fill = _disabled
+
+    def _shallow_copy(self):
+        return self.view()
+
+    def values(self):
+        """returns *copy* of underlying array"""
+        arr = self.view(np.ndarray).copy()
+        return arr
+
+    def __unicode__(self):
+        """
+        Return a string representation for this object.
+
+        Invoked by unicode(df) in py2 only. Yields a Unicode String in both py2/py3.
+        """
+        prepr = com.pprint_thing(self, escape_chars=('\t', '\r', '\n'),quote_strings=True)
+        return '%s(%s, dtype=%s)' % (type(self).__name__, prepr, self.dtype)
+
+
+def _delegate_to_ndarray_method(name):
+    @wraps(getattr(np.ndarray, name))
+    def wrapper(self, *args, **kwargs):
+        return getattr(self._data, name)(*args, **kwargs)
+    return wrapper
+
+def _delegate_to_ndarray_property(attr):
+    def getter(self):
+        return getattr(self._data, attr)
+    def setter(self, value):
+        setattr(self._data, attr, value)
+    def deleter(self):
+        delattr(self._data, attr)
+    return property(fget=getter, fset=setter, fdel=deleter)
+
+def _wrap_cython_index_method(method, klass=None):
+    # TODO: Copy metadata here too
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        result = method(self.values, *args, **kwargs)
+        if klass is None:
+            return Index(result, fastpath=True)
+        else:
+            return klass(result, fastpath=True)
+    return wrapper
+
+
+class Index(PandasObject):
 
     """
     Immutable ndarray implementing an ordered, sliceable set. The basic object
@@ -75,33 +137,36 @@ class Index(FrozenNDArray):
     ----
     An Index instance can **only** contain hashable objects
     """
+    def _disabled(self, *args, **kwargs):
+        """This method will not function because object is immutable."""
+        raise TypeError("'%s' does not support mutable operations." %
+                        self.__class__)
+
+    __setitem__ = __setslice__ = __delitem__ = __delslice__ = _disabled
+    put = itemset = fill = _disabled
     # To hand over control to subclasses
     _join_precedence = 1
 
     # Cython methods
-    _groupby = _algos.groupby_object
-    _arrmap = _algos.arrmap_object
-    _left_indexer_unique = _algos.left_join_indexer_unique_object
-    _left_indexer = _algos.left_join_indexer_object
-    _inner_indexer = _algos.inner_join_indexer_object
-    _outer_indexer = _algos.outer_join_indexer_object
+    _groupby = _wrap_cython_index_method(_algos.groupby_object)
+    _arrmap = _wrap_cython_index_method(_algos.arrmap_object)
+    _left_indexer_unique = _wrap_cython_index_method(_algos.left_join_indexer_unique_object)
+    _left_indexer = _wrap_cython_index_method(_algos.left_join_indexer_object)
+    _inner_indexer = _wrap_cython_index_method(_algos.inner_join_indexer_object)
+    _outer_indexer = _wrap_cython_index_method(_algos.outer_join_indexer_object)
 
     _box_scalars = False
 
     name = None
     asi8 = None
-    _comparables = ['name']
+    _metadata = ['name']
 
     _engine_type = _index.ObjectEngine
 
+    dtype = _delegate_to_ndarray_property('dtype')
+
     def __new__(cls, data, dtype=None, copy=False, name=None, fastpath=False,
                 **kwargs):
-
-        # no class inference!
-        if fastpath:
-            subarr = data.view(cls)
-            subarr.name = name
-            return subarr
 
         from pandas.tseries.period import PeriodIndex
         if isinstance(data, np.ndarray):
@@ -109,7 +174,7 @@ class Index(FrozenNDArray):
                 from pandas.tseries.index import DatetimeIndex
                 result = DatetimeIndex(data, copy=copy, name=name, **kwargs)
                 if dtype is not None and _o_dtype == dtype:
-                    return Index(result.to_pydatetime(), dtype=_o_dtype)
+                    return ObjectIndex(result.to_pydatetime(), fastpath=True)
                 else:
                     return result
             elif issubclass(data.dtype.type, np.timedelta64):
@@ -139,6 +204,9 @@ class Index(FrozenNDArray):
         else:
             # other iterable of some kind
             subarr = com._asarray_tuplesafe(data, dtype=object)
+            # # not here previously, is it necessary?
+            # if copy:
+            #     subarr = subarr.copy()
 
         if dtype is None:
             inferred = lib.infer_dtype(subarr)
@@ -154,10 +222,7 @@ class Index(FrozenNDArray):
                 elif inferred == 'period':
                     return PeriodIndex(subarr, name=name, **kwargs)
 
-        subarr = subarr.view(cls)
-        # could also have a _set_name, but I don't think it's really necessary
-        subarr._set_names([name])
-        return subarr
+        return ObjectIndex(subarr, copy=False, name=name, fastpath=True, **kwargs)
 
     def is_(self, other):
         """
@@ -214,13 +279,11 @@ class Index(FrozenNDArray):
             data = np.asarray(data)
         return data
 
-    def __array_finalize__(self, obj):
-        self._reset_identity()
-        if not isinstance(obj, type(self)):
-            # Only relevant if array being created from an Index instance
-            return
+    def __array__(self, result=None):
+        return self.values
 
-        self.name = getattr(obj, 'name', None)
+    def __array_wrap__(self, result):
+        return Index(result, name=self.name)
 
     def _shallow_copy(self):
         return self.view()
@@ -248,17 +311,12 @@ class Index(FrozenNDArray):
             raise TypeError("Can only provide one of `names` and `name`")
         if deep:
             from copy import deepcopy
-            new_index = np.ndarray.__deepcopy__(self, {}).view(self.__class__)
-            name = name or deepcopy(self.name)
+            new_data = deepcopy(self._data)
         else:
-            new_index = super(Index, self).copy()
+            new_data = self._data.view()
         if name is not None:
             names = [name]
-        if names:
-            new_index = new_index.set_names(names)
-        if dtype:
-            new_index = new_index.astype(dtype)
-        return new_index
+        return Index(new_data, names=names, dtype=dtype, copy=False)
 
     def to_series(self):
         """
@@ -356,7 +414,9 @@ class Index(FrozenNDArray):
         -------
         new index (of same type and class...etc) [if inplace, returns None]
         """
-        return self.set_names([name], inplace=inplace)
+        if not com.is_list_like(name):
+            name = [name]
+        return self.set_names(name, inplace=inplace)
 
     @property
     def _has_complex_internals(self):
@@ -388,7 +448,7 @@ class Index(FrozenNDArray):
 
     @property
     def values(self):
-        return np.asarray(self)
+        return self._data
 
     def get_values(self):
         return self.values
@@ -574,21 +634,15 @@ class Index(FrozenNDArray):
     def __iter__(self):
         return iter(self.values)
 
-    def __reduce__(self):
+    def __getstate__(self):
         """Necessary for making this object picklable"""
-        object_state = list(np.ndarray.__reduce__(self))
-        subclass_state = self.name,
-        object_state[2] = (object_state[2], subclass_state)
-        return tuple(object_state)
+        return dict(_data=self._data, name=self.name)
 
     def __setstate__(self, state):
         """Necessary for making this object picklable"""
-        if len(state) == 2:
-            nd_state, own_state = state
-            np.ndarray.__setstate__(self, nd_state)
-            self.name = own_state[0]
-        else:  # pragma: no cover
-            np.ndarray.__setstate__(self, state)
+        # need to reset object id
+        return self._constructor(state.pop('_data'), name=state.pop('name'),
+                                 fastpath=True)
 
     def __deepcopy__(self, memo={}):
         return self.copy(deep=True)
@@ -606,14 +660,13 @@ class Index(FrozenNDArray):
 
     def __getitem__(self, key):
         """Override numpy.ndarray's __getitem__ method to work as desired"""
-        arr_idx = self.view(np.ndarray)
         if np.isscalar(key):
-            return arr_idx[key]
+            return self._data[key]
         else:
             if com._is_bool_indexer(key):
                 key = np.asarray(key)
 
-            result = arr_idx[key]
+            result = self._data[key]
             if result.ndim > 1:
                 return result
 
@@ -622,8 +675,7 @@ class Index(FrozenNDArray):
     def _getitem_slice(self, key):
         """ getitem for a bool/sliceable, fallback to standard getitem """
         try:
-            arr_idx = self.view(np.ndarray)
-            result = arr_idx[key]
+            result = self._data[key]
             return self.__class__(result, name=self.name, fastpath=True)
         except:
             return self.__getitem__(key)
@@ -676,7 +728,7 @@ class Index(FrozenNDArray):
         Analogous to ndarray.take
         """
         indexer = com._ensure_platform_int(indexer)
-        taken = self.view(np.ndarray).take(indexer)
+        taken = self._data.take(indexer)
         return self._constructor(taken, name=self.name)
 
     def format(self, name=False, formatter=None, **kwargs):
@@ -727,7 +779,7 @@ class Index(FrozenNDArray):
     def _format_native_types(self, na_rep='', **kwargs):
         """ actually format my specific types """
         mask = isnull(self)
-        values = np.array(self, dtype=object, copy=True)
+        values = np.array(self.values, dtype=object, copy=True)
         values[mask] = na_rep
         return values.tolist()
 
@@ -741,7 +793,8 @@ class Index(FrozenNDArray):
         if not isinstance(other, Index):
             return False
 
-        if type(other) != Index:
+        # default index
+        if type(other) != ObjectIndex:
             return other.equals(self)
 
         return np.array_equal(self, other)
@@ -751,7 +804,7 @@ class Index(FrozenNDArray):
         Similar to equals, but check that other comparable attributes are also equal
         """
         return self.equals(other) and all(
-            (getattr(self, c, None) == getattr(other, c, None) for c in self._comparables))
+            (getattr(self, c, None) == getattr(other, c, None) for c in self._metadata))
 
     def asof(self, label):
         """
@@ -762,7 +815,8 @@ class Index(FrozenNDArray):
             raise TypeError('%s' % type(label))
 
         if label not in self:
-            loc = self.searchsorted(label, side='left')
+            # doesn't this require index to be sorted??
+            loc = self._data.searchsorted(label, side='left')
             if loc > 0:
                 return self[loc - 1]
             else:
@@ -778,6 +832,7 @@ class Index(FrozenNDArray):
         mask : array of booleans where data is not NA
 
         """
+        # doesn't this require index to be sorted??
         locs = self.values[mask].searchsorted(where.values, side='right')
 
         locs = np.where(locs > 0, locs - 1, 0)
@@ -792,11 +847,11 @@ class Index(FrozenNDArray):
         """
         Return sorted copy of Index
         """
-        _as = self.argsort()
+        _as = self._data.argsort()
         if not ascending:
             _as = _as[::-1]
 
-        sorted_index = self.take(_as)
+        sorted_index = np.take(self.take(_as))
 
         if return_indexer:
             return sorted_index, _as
@@ -1614,6 +1669,28 @@ class Index(FrozenNDArray):
         return self.delete(indexer)
 
 
+class ObjectIndex(Index):
+    """
+    Index with dtype object.
+    """ + Index.__doc__
+
+    def __init__(self, data, dtype=None, copy=False, name=None, fastpath=False, **kwargs):
+        self.name = name
+
+        if fastpath:
+            self._data = data
+            return
+
+        if not isinstance(data, np.ndarray):
+            data = np.array(data, dtype=dtype)
+        else:
+            if dtype is not None:
+                data = data.astype(dtype)
+            if copy:
+                data = data.copy()
+
+
+
 class Int64Index(Index):
 
     """
@@ -1849,7 +1926,7 @@ class MultiIndex(Index):
     _names = FrozenList()
     _levels = FrozenList()
     _labels = FrozenList()
-    _comparables = ['names']
+    _metadata = ['names']
     rename = Index.set_names
 
     def __new__(cls, levels=None, labels=None, sortorder=None, names=None,
