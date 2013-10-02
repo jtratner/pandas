@@ -117,7 +117,6 @@ def _wrap_cython_index_method(method, klass=None):
             return klass(result, fastpath=True)
     return wrapper
 
-
 class Index(PandasObject):
 
     """
@@ -168,13 +167,17 @@ class Index(PandasObject):
     def __new__(cls, data, dtype=None, copy=False, name=None, fastpath=False,
                 **kwargs):
 
+        # no class inference!
+        if fastpath:
+            return cls._fastpath(data=data, name=name, **kwargs)
+
         from pandas.tseries.period import PeriodIndex
         if isinstance(data, np.ndarray):
             if issubclass(data.dtype.type, np.datetime64):
                 from pandas.tseries.index import DatetimeIndex
                 result = DatetimeIndex(data, copy=copy, name=name, **kwargs)
                 if dtype is not None and _o_dtype == dtype:
-                    return ObjectIndex(result.to_pydatetime(), fastpath=True)
+                    return Index(result.to_pydatetime(), fastpath=True)
                 else:
                     return result
             elif issubclass(data.dtype.type, np.timedelta64):
@@ -222,7 +225,7 @@ class Index(PandasObject):
                 elif inferred == 'period':
                     return PeriodIndex(subarr, name=name, **kwargs)
 
-        return ObjectIndex(subarr, copy=False, name=name, fastpath=True, **kwargs)
+        return Index(subarr, copy=False, name=name, fastpath=True, **kwargs)
 
     def is_(self, other):
         """
@@ -1667,28 +1670,6 @@ class Index(PandasObject):
         if mask.any():
             raise ValueError('labels %s not contained in axis' % labels[mask])
         return self.delete(indexer)
-
-
-class ObjectIndex(Index):
-    """
-    Index with dtype object.
-    """ + Index.__doc__
-
-    def __init__(self, data, dtype=None, copy=False, name=None, fastpath=False, **kwargs):
-        self.name = name
-
-        if fastpath:
-            self._data = data
-            return
-
-        if not isinstance(data, np.ndarray):
-            data = np.array(data, dtype=dtype)
-        else:
-            if dtype is not None:
-                data = data.astype(dtype)
-            if copy:
-                data = data.copy()
-
 
 
 class Int64Index(Index):
