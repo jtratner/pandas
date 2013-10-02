@@ -115,6 +115,7 @@ def isnull(obj):
 
 
 def _isnull_new(obj):
+    # TODO: Decide where to get index
     if lib.isscalar(obj):
         return lib.checknull(obj)
     # hack (for now) because MI registers as ndarray
@@ -1623,8 +1624,7 @@ def _is_bool_indexer(key):
 def _default_index(n):
     from pandas.core.index import Int64Index
     values = np.arange(n, dtype=np.int64)
-    result = values.view(Int64Index)
-    result.name = None
+    result = Int64Index(values, name=None, fastpath=True)
     result.is_unique = True
     return result
 

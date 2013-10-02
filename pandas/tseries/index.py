@@ -9,7 +9,7 @@ import numpy as np
 from pandas.core.common import (isnull, _NS_DTYPE, _INT64_DTYPE,
                                 is_list_like,_values_from_object, _maybe_box,
                                 notnull)
-from pandas.core.index import Index, Int64Index, _Identity
+from pandas.core.index import Index, Int64Index, _Identity, _unpickle
 import pandas.compat as compat
 from pandas.compat import u
 from pandas.tseries.frequencies import (
@@ -139,8 +139,12 @@ class DatetimeIndex(Int64Index):
     _engine_type = _index.DatetimeEngine
 
     offset = None
-    _comparables = ['name','freqstr','tz']
+    _metadata = ['name','freqstr','tz']
 
+    # NOTE HERE: DatetimeIndex cannot play well with super and such
+    # it has to skip right to Index super, otherwise it can't get to object
+    # to instantiate new DT Index. Further, it has to override __init__ of
+    # Index too.
     def __new__(cls, data=None,
                 freq=None, start=None, end=None, periods=None,
                 copy=False, name=None, tz=None,
@@ -184,10 +188,15 @@ class DatetimeIndex(Int64Index):
                              "supplied")
 
         if data is None:
-            return cls._generate(start, end, periods, name, offset,
+            # have to go up to Index to be able to actually get object
+            # constructor
+            obj = super(Index, cls).__new__(cls)
+            obj = cls._generate(obj, start, end, periods, name, offset,
                                  tz=tz, normalize=normalize, 
                                  infer_dst=infer_dst)
-
+            obj._reset_identity()
+            return obj
+        # yields data (an ndarray)
         if not isinstance(data, np.ndarray):
             if np.isscalar(data):
                 raise ValueError('DatetimeIndex() must be called with a '
@@ -219,7 +228,7 @@ class DatetimeIndex(Int64Index):
         if issubclass(data.dtype.type, compat.string_types):
             data = _str_to_dt_array(data, offset, dayfirst=dayfirst,
                                       yearfirst=yearfirst)
-
+        # yields subarr
         if issubclass(data.dtype.type, np.datetime64):
             if isinstance(data, DatetimeIndex):
                 if tz is None:
@@ -269,28 +278,43 @@ class DatetimeIndex(Int64Index):
 
                 subarr = subarr.view(_NS_DTYPE)
 
-        subarr = subarr.view(cls)
-        subarr.name = name
-        subarr.offset = offset
-        subarr.tz = tz
+        if isinstance(subarr, DatetimeIndex):
+            obj = subarr
+        else:
+            obj = super(Index, cls).__new__(cls)
+            obj._reset_identity()
+            obj._data = getattr(subarr, 'values', subarr)
 
-        if verify_integrity and len(subarr) > 0:
+        assert hasattr(obj, "_data"), """Expected DatetimeIndex to have data
+        attribute"""
+
+        # after this point, *will* be a DatetimeIndex
+        obj.name = name
+        obj.offset = offset
+        obj.tz = tz
+
+        if verify_integrity and len(obj) > 0:
             if offset is not None and not freq_infer:
-                inferred = subarr.inferred_freq
+                inferred = obj.inferred_freq
                 if inferred != offset.freqstr:
                     raise ValueError('Dates do not conform to passed '
                                      'frequency')
 
         if freq_infer:
-            inferred = subarr.inferred_freq
+            inferred = obj.inferred_freq
             if inferred:
-                subarr.offset = to_offset(inferred)
+                obj.offset = to_offset(inferred)
 
-        return subarr
+        return obj
+
+    def __init__(self, *args, **kwargs):
+        # everything happens in __new__ so skip __init__
+        pass
 
     @classmethod
-    def _generate(cls, start, end, periods, name, offset,
+    def _generate(cls, new_obj, start, end, periods, name, offset,
                   tz=None, normalize=False, infer_dst=False):
+        # new_obj is a *potential* new obj to use (doesn't have to be used)
         if com._count_not_none(start, end, periods) != 2:
             raise ValueError('Must specify two of start, end, or periods')
 
@@ -351,7 +375,7 @@ class DatetimeIndex(Int64Index):
 
             if _use_cached_range(offset, _normalized, start, end):
                 index = cls._cached_range(start, end, periods=periods,
-                                          offset=offset, name=name)
+                                           offset=offset, name=name)
             else:
                 index = _generate_regular_range(start, end, periods, offset)
 
@@ -375,6 +399,9 @@ class DatetimeIndex(Int64Index):
             if _use_cached_range(offset, _normalized, start, end):
                 index = cls._cached_range(start, end, periods=periods,
                                           offset=offset, name=name)
+                assert isinstance(index, DatetimeIndex), """Thought _cached_range
+                produced DatetimeIndex"""
+                assert hasattr(index, '_data')
             else:
                 index = _generate_regular_range(start, end, periods, offset)
 
@@ -382,13 +409,17 @@ class DatetimeIndex(Int64Index):
                 index = tslib.tz_localize_to_utc(com._ensure_int64(index), tz,
                                                  infer_dst=infer_dst)
                 index = index.view(_NS_DTYPE)
+        if isinstance(index, DatetimeIndex):
+            assert hasattr(index, '_data')
+            new_obj = index.view()
+            assert hasattr(new_obj, '_data')
+        else:
+            new_obj._data = index
+        new_obj.name = name
+        new_obj.offset = offset
+        new_obj.tz = tz
 
-        index = index.view(cls)
-        index.name = name
-        index.offset = offset
-        index.tz = tz
-
-        return index
+        return new_obj
 
     def _box_values(self, values):
         return lib.map_infer(values, lib.Timestamp)
@@ -408,17 +439,14 @@ class DatetimeIndex(Int64Index):
             reverse.put(indexer, np.arange(n))
             return result.take(reverse)
 
+    # TODO: This method can probably be removed
     @classmethod
     def _simple_new(cls, values, name, freq=None, tz=None):
         if values.dtype != _NS_DTYPE:
             values = com._ensure_int64(values).view(_NS_DTYPE)
 
-        result = values.view(cls)
-        result.name = name
-        result.offset = freq
-        result.tz = tools._maybe_get_tz(tz)
+        return cls(values, name=name, offset=freq, tz=tools._maybe_get_tz(tz))
 
-        return result
 
     @property
     def tzinfo(self):
@@ -430,6 +458,8 @@ class DatetimeIndex(Int64Index):
     @classmethod
     def _cached_range(cls, start=None, end=None, periods=None, offset=None,
                       name=None):
+        """use a cached range under the hood and create a new instance if it
+        doesn't exit"""
         if start is None and end is None:
             # I somewhat believe this should never be raised externally and therefore
             # should be a `PandasError` but whatever...
@@ -446,16 +476,14 @@ class DatetimeIndex(Int64Index):
             raise TypeError('Must provide offset.')
 
         drc = _daterange_cache
+        # create cached range if it doesn't exist already
         if offset not in _daterange_cache:
             xdr = generate_range(offset=offset, start=_CACHE_START,
                                  end=_CACHE_END)
 
             arr = tools.to_datetime(list(xdr), box=False)
 
-            cachedRange = arr.view(DatetimeIndex)
-            cachedRange.offset = offset
-            cachedRange.tz = None
-            cachedRange.name = None
+            cachedRange = DatetimeIndex(arr, offset=offset, tz=None, name=None)
             drc[offset] = cachedRange
         else:
             cachedRange = drc[offset]
@@ -527,27 +555,15 @@ class DatetimeIndex(Int64Index):
 
     def __reduce__(self):
         """Necessary for making this object picklable"""
-        object_state = list(np.ndarray.__reduce__(self))
-        subclass_state = self.name, self.offset, self.tz
-        object_state[2] = (object_state[2], subclass_state)
-        return tuple(object_state)
-
-    def __setstate__(self, state):
-        """Necessary for making this object picklable"""
-        if len(state) == 2:
-            nd_state, own_state = state
-            self.name = own_state[0]
-            self.offset = own_state[1]
-            self.tz = own_state[2]
-            np.ndarray.__setstate__(self, nd_state)
-
-            # provide numpy < 1.7 compat
-            if nd_state[2] == 'M8[us]':
-                new_state = np.ndarray.__reduce__(self.values.astype('M8[ns]'))
-                np.ndarray.__setstate__(self, new_state[2])
-
-        else:  # pragma: no cover
-            np.ndarray.__setstate__(self, state)
+        # Hey ma, look, it's LISP!
+        # TODO: figure out a better way to abstract this
+        return (_unpickle,
+                (type(self), self._data, dict(
+                    name=self.name,
+                    tz=self.tz,
+                    freq=self.offset)
+                )
+               )
 
     def __add__(self, other):
         if isinstance(other, Index):

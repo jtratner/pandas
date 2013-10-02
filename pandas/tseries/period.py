@@ -583,12 +583,16 @@ class PeriodIndex(Int64Index):
         else:
             ordinal, freq = cls._from_arraylike(data, freq, tz)
             data = np.array(ordinal, dtype=np.int64, copy=False)
+        self = super(Index, cls).__new__(cls)
+        self._data = data
+        self.name = name
+        self.freq = freq
 
-        subarr = data.view(cls)
-        subarr.name = name
-        subarr.freq = freq
+        return self
 
-        return subarr
+    def __init__(self, *args, **kwargs):
+        # skip call to __init__ after return
+        pass
 
     @classmethod
     def _generate_range(cls, start, end, periods, freq, fields):
