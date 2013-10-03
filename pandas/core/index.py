@@ -133,13 +133,32 @@ class Index(PandasObject):
     _engine_type = _index.ObjectEngine
 
     dtype = _delegate_to_ndarray_property('dtype')
+    __len__ = _delegate_to_ndarray_property('__len__')
 
+    def _fastpath(self, data, name=None, **kwargs):
+        """bypass method when class inference is already working"""
+        self._data = data
+        self.name = name
+
+    # like ``__array_finalize__`` but in reverse (obj is data for new index)
+    def _reconstruct(self, data):
+        kwargs = dict((k, getattr(self, k, None)) for k in self._metadata)
+        return self.__class__(data=data, fastpath=True, **kwargs)
+
+
+    # side note, because of ``__new__`` method, can't ever define an
+    # ``__init__`` method on Index (otherwise it'd get called here).
     def __new__(cls, data, dtype=None, copy=False, name=None, fastpath=False,
                 **kwargs):
 
-        # no class inference!
+        # no class inference! - stick with passed class
         if fastpath:
-            return cls._fastpath(data=data, name=name, **kwargs)
+            # skip inheritance here, we want to get instance of class to use
+            obj = super(Index, cls).__new__(cls)
+            # allow arbitrary ordering
+            kwargs.update({'name': name, 'dtype':dtype, 'copy': copy, 'fastpath': fastpath})
+            obj._fastpath(data, **kwargs)
+            return obj
 
         from pandas.tseries.period import PeriodIndex
         if isinstance(data, np.ndarray):
@@ -196,6 +215,15 @@ class Index(PandasObject):
                     return PeriodIndex(subarr, name=name, **kwargs)
 
         return Index(subarr, copy=False, name=name, fastpath=True, **kwargs)
+
+    def __unicode__(self):
+        """
+        Return a string representation for this object.
+
+        Invoked by unicode(df) in py2 only. Yields a Unicode String in both py2/py3.
+        """
+        prepr = com.pprint_thing(self, escape_chars=('\t', '\r', '\n'),quote_strings=True)
+        return '%s(%s, dtype=%s)' % (type(self).__name__, prepr, self.dtype)
 
     def is_(self, other):
         """
@@ -770,10 +798,10 @@ class Index(PandasObject):
             return False
 
         # default index
-        if type(other) != ObjectIndex:
+        if type(other) != Index:
             return other.equals(self)
 
-        return np.array_equal(self, other)
+        return np.array_equal(self.values, other.values)
 
     def identical(self, other):
         """
@@ -1676,18 +1704,17 @@ class Int64Index(Index):
 
     _engine_type = _index.Int64Engine
 
-    def __new__(cls, data, dtype=None, copy=False, name=None, fastpath=False):
-
+    def __init__(self, data, dtype=None, copy=False, name=None, fastpath=False):
         if fastpath:
-            subarr = data.view(cls)
-            subarr.name = name
-            return subarr
+            self._data = data
+            self.name = name
+            return
 
         # isscalar, generators handled in coerce_to_ndarray
-        data = cls._coerce_to_ndarray(data)
+        data = self._coerce_to_ndarray(data)
 
         if issubclass(data.dtype.type, compat.string_types):
-            cls._string_data_error(data)
+            self._string_data_error(data)
 
         elif issubclass(data.dtype.type, np.integer):
             # don't force the upcast as we may be dealing
@@ -1702,10 +1729,8 @@ class Int64Index(Index):
                 if (subarr != data).any():
                     raise TypeError('Unsafe NumPy casting, you must '
                                     'explicitly cast')
-
-        subarr = subarr.view(cls)
-        subarr.name = name
-        return subarr
+        self._data = subarr
+        self.name = name
 
     @property
     def inferred_type(self):
@@ -1767,17 +1792,16 @@ class Float64Index(Index):
     # when this is not longer object dtype this can be changed
     #_engine_type = _index.Float64Engine
 
-    def __new__(cls, data, dtype=None, copy=False, name=None, fastpath=False):
+    def __init__(self, data, dtype=None, copy=False, name=None, fastpath=False):
 
         if fastpath:
-            subarr = data.view(cls)
-            subarr.name = name
-            return subarr
+            # already handled
+            return
 
-        data = cls._coerce_to_ndarray(data)
+        data = self._coerce_to_ndarray(data)
 
         if issubclass(data.dtype.type, compat.string_types):
-            cls._string_data_error(data)
+            self._string_data_error(data)
 
         if dtype is None:
             dtype = np.float64
@@ -1792,9 +1816,8 @@ class Float64Index(Index):
         if not subarr.dtype == np.object_:
             subarr = subarr.astype(object)
 
-        subarr = subarr.view(cls)
-        subarr.name = name
-        return subarr
+        self._data = subarr
+        self.name = name
 
     @property
     def inferred_type(self):
@@ -1883,8 +1906,12 @@ class MultiIndex(Index):
     _metadata = ['names']
     rename = Index.set_names
 
-    def __new__(cls, levels=None, labels=None, sortorder=None, names=None,
-                copy=False):
+    def __init__(self, data=None, levels=None, labels=None, sortorder=None,
+                 names=None, copy=False, fastpath=False):
+        if fastpath:
+            # should already be handled by ``__new__``
+            return
+
         if len(levels) != len(labels):
             raise ValueError(
                 'Length of levels and labels must be the same')
@@ -1898,20 +1925,18 @@ class MultiIndex(Index):
 
             return Index(levels[0], name=name, copy=True).take(labels[0])
 
-        # v3, 0.8.0
-        subarr = np.empty(0, dtype=object).view(cls)
-        subarr._set_levels(levels, copy=copy)
-        subarr._set_labels(labels, copy=copy)
+        self._set_levels(levels, copy=copy)
+        self._set_labels(labels, copy=copy)
 
         if names is not None:
-            subarr._set_names(names)
+            self._set_names(names)
 
         if sortorder is not None:
-            subarr.sortorder = int(sortorder)
+            self.sortorder = int(sortorder)
         else:
-            subarr.sortorder = sortorder
+            self.sortorder = sortorder
 
-        return subarr
+        return
 
     def _get_levels(self):
         return self._levels
