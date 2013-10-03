@@ -10,7 +10,7 @@ import pandas.lib as lib
 import pandas.algos as _algos
 import pandas.index as _index
 from pandas.lib import Timestamp
-from pandas.core.base import FrozenList, PandasObject
+from pandas.core.base import FrozenList, PandasObject, FrozenNDArray
 
 from pandas.util.decorators import cache_readonly, deprecate
 from pandas.core.common import isnull
@@ -54,41 +54,8 @@ def _shouldbe_timestamp(obj):
             or tslib.is_datetime64_array(obj)
             or tslib.is_timestamp_array(obj))
 
+
 _Identity = object
-
-class FrozenNDArray(PandasObject, np.ndarray):
-
-    # no __array_finalize__ for now because no metadata
-    def __new__(cls, data, dtype=None, copy=False):
-        if copy is None:
-            copy = not isinstance(data, FrozenNDArray)
-        res = np.array(data, dtype=dtype, copy=copy).view(cls)
-        return res
-
-    def _disabled(self, *args, **kwargs):
-        """This method will not function because object is immutable."""
-        raise TypeError("'%s' does not support mutable operations." %
-                        self.__class__)
-
-    __setitem__ = __setslice__ = __delitem__ = __delslice__ = _disabled
-    put = itemset = fill = _disabled
-
-    def _shallow_copy(self):
-        return self.view()
-
-    def values(self):
-        """returns *copy* of underlying array"""
-        arr = self.view(np.ndarray).copy()
-        return arr
-
-    def __unicode__(self):
-        """
-        Return a string representation for this object.
-
-        Invoked by unicode(df) in py2 only. Yields a Unicode String in both py2/py3.
-        """
-        prepr = com.pprint_thing(self, escape_chars=('\t', '\r', '\n'),quote_strings=True)
-        return '%s(%s, dtype=%s)' % (type(self).__name__, prepr, self.dtype)
 
 
 def _delegate_to_ndarray_method(name):
