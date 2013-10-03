@@ -1459,8 +1459,7 @@ def _is_bool_indexer(key):
 def _default_index(n):
     from pandas.core.index import Int64Index
     values = np.arange(n, dtype=np.int64)
-    result = values.view(Int64Index)
-    result.name = None
+    result = Int64Index(values, name=None, fastpath=True)
     result.is_unique = True
     return result
 
