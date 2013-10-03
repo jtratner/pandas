@@ -64,24 +64,27 @@ def _delegate_to_ndarray_method(name):
         return getattr(self._data, name)(*args, **kwargs)
     return wrapper
 
-def _delegate_to_ndarray_property(attr):
+def _delegate_to_ndarray_property(attr, setter=None, deleter=None):
     def getter(self):
         return getattr(self._data, attr)
-    def setter(self, value):
-        setattr(self._data, attr, value)
-    def deleter(self):
-        delattr(self._data, attr)
+    if setter and not compat.callable(setter):
+        def setter(self, value):
+            setattr(self._data, attr, value)
+    if deleter and not compat.callable(deleter):
+        def deleter(self):
+            delattr(self._data, attr)
     return property(fget=getter, fset=setter, fdel=deleter)
 
-def _wrap_cython_index_method(method, klass=None):
+def _wrap_cython_index_method(method, reconstruct=True):
+    """Wraps Cython method by converting to values first [note that it assumes
+    op will be non-destructive on passed array"""
     # TODO: Copy metadata here too
     @wraps(method)
     def wrapper(self, *args, **kwargs):
-        result = method(self.values, *args, **kwargs)
-        if klass is None:
-            return Index(result, fastpath=True)
-        else:
-            return klass(result, fastpath=True)
+        result = method(self._values, *args, **kwargs)
+        if reconstruct:
+            result = self._reconstruct(result)
+        return result
     return wrapper
 
 class Index(PandasObject):
