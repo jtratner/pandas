@@ -208,10 +208,7 @@ class TestIndex(unittest.TestCase):
         self.assertFalse(ind.is_(ind.copy()))
         self.assertFalse(ind.is_(ind.copy(deep=False)))
         self.assertFalse(ind.is_(ind[:]))
-        self.assertFalse(ind.is_(ind.view(np.ndarray).view(Index)))
         self.assertFalse(ind.is_(np.array(range(10))))
-        # quasi-implementation dependent
-        self.assertTrue(ind.is_(ind.view().base))
         ind2 = ind.view()
         ind2.name = 'bob'
         self.assertTrue(ind.is_(ind2))
