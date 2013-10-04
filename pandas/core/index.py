@@ -187,6 +187,9 @@ class Index(PandasObject):
         if name and names:
             raise TypeError("Cannot specify name and names!")
         name = name if names is None else names[0]
+        if cls != Index:
+            kwargs.update({'name': name, 'dtype':dtype, 'copy': copy, 'fastpath': fastpath})
+            return cls._instantiate(cls, data, **kwargs)
         # TODO: handle when type(cls) != Index [needs to skip inference]
         # no class inference! - stick with passed class
         if fastpath:
