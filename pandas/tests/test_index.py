@@ -1210,8 +1210,6 @@ class TestMultiIndex(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     def setUp(self):
-        #TODO: Remove me
-        raise nose.SkipTest("Not testing MultiIndex (yet!)")
         major_axis = Index(['foo', 'bar', 'baz', 'qux'])
         minor_axis = Index(['one', 'two'])
 
