@@ -1,7 +1,7 @@
 # pylint: disable=E1101,E1103,W0232
 import datetime
 from functools import partial, wraps
-import warnings
+from warnings import warn
 from pandas.compat import range, zip, lrange, lzip, u
 from pandas import compat
 import numpy as np
@@ -167,10 +167,9 @@ class Index(PandasObject):
         return self._data.any()
 
     @classmethod
-    def _instantiate(cls, new_klass=None, *args, **kwargs):
+    def _instantiate(cls, new_klass, *args, **kwargs):
         """Called from __new__ to instantiate objects (and call their __new__
             methods if necessary"""
-        cls = new_klass or cls
         # Only need to call __new__ if it's different than our current __new__
         if new_klass.__new__ is not cls.__new__:
             obj = new_klass(*args, **kwargs)
@@ -317,7 +316,7 @@ class Index(PandasObject):
             return res
         # whew!
         if args and len(args) == 1 and isinstance(args[0], type) and issubclass(args[0], Index):
-            warnings.warn("Using view(Index) on Index objects is deprecated.")
+            warn("Using view(Index) on Index objects is deprecated.")
             return self._shallow_copy()
         # TODO: Decide if this should be allowed and also whether this should
         #       be values or data...
