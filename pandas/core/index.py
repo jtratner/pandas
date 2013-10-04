@@ -312,8 +312,8 @@ class Index(PandasObject):
             res = self._shallow_copy()
             res._id = self._id
             return res
-
-        if args and issubclass(args[0], Index):
+        # whew!
+        if args and len(args) == 1 and isinstance(args[0], type) and issubclass(args[0], Index):
             warnings.warn("Using view(Index) on Index objects is deprecated.")
             return self._shallow_copy()
         # TODO: Decide if this should be allowed and also whether this should
