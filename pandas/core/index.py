@@ -152,7 +152,8 @@ class Index(PandasObject):
     # TODO: Rename this - maybe to __finalize__?
     def _reconstruct(self, data):
         kwargs = dict((k, getattr(self, k, None)) for k in self._metadata)
-        return self.__class__(data=data, fastpath=True, **kwargs)
+        kwargs.setdefault('fastpath', True)
+        return self.__class__(data=data, **kwargs)
 
 
     def __reduce__(self):
@@ -166,6 +167,9 @@ class Index(PandasObject):
     def any(self):
         return self._data.any()
 
+    # hack - figure out a better way to do this later
+    _finished = False
+
     @classmethod
     def _instantiate(cls, new_klass, *args, **kwargs):
         """Called from __new__ to instantiate objects (and call their __new__
@@ -176,6 +180,7 @@ class Index(PandasObject):
         else:
             obj = super(Index, cls).__new__(new_klass)
             obj.__init__(*args, **kwargs)
+            obj._finished = True
         return obj
 
 
@@ -268,6 +273,8 @@ class Index(PandasObject):
 
     def __init__(self, *args, **kwargs):
         self._reset_identity()
+        if self._finished:
+            return
 
     def __unicode__(self):
         """
@@ -930,7 +937,7 @@ class Index(PandasObject):
         if not ascending:
             _as = _as[::-1]
 
-        sorted_index = np.take(self.take(_as))
+        sorted_index = self._reconstruct(self._data.take(_as))
 
         if return_indexer:
             return sorted_index, _as
@@ -1306,6 +1313,7 @@ class Index(PandasObject):
         is_contained : ndarray (boolean dtype)
         """
         value_set = set(values)
+        # TODO: Probably have asobject to return ndarray
         return lib.ismember(self._array_values(), value_set)
 
     def _array_values(self):
@@ -1782,6 +1790,8 @@ class Int64Index(Index):
     def __init__(self, data, dtype=None, copy=False, name=None, fastpath=False,
                  names=None):
         self._reset_identity()
+        if self._finished:
+            return
         if fastpath:
             self._data = data
             self.name = name
@@ -1871,6 +1881,8 @@ class Float64Index(Index):
 
     def __init__(self, data, dtype=None, copy=False, name=None, names=None, fastpath=False):
         self._reset_identity()
+        if self._finished:
+            return
 
         if fastpath:
             # already handled

@@ -4677,8 +4677,10 @@ def _homogenize(data, index, dtype=None):
                 v = v.reindex(index, copy=False)
         else:
             if isinstance(v, dict):
+                # cython compat
                 if oindex is None:
                     oindex = index.astype('O')
+                    oindex = getattr(oindex, 'values', oindex)
                 if type(v) == dict:
                     # fast cython method
                     v = lib.fast_multiget(v, oindex, default=NA)
