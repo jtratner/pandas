@@ -1,6 +1,7 @@
 # pylint: disable=E1101,E1103,W0232
 import datetime
 from functools import partial, wraps
+import warnings
 from pandas.compat import range, zip, lrange, lzip, u
 from pandas import compat
 import numpy as np
@@ -311,10 +312,10 @@ class Index(PandasObject):
             res = self._shallow_copy()
             res._id = self._id
             return res
-
-        if args and isinstance(args[0], Index):
-            raise AssertionError("Can't use view on Index object with Index"
-                                 " classes %r" % args[0])
+        # whew!
+        if args and len(args) == 1 and isinstance(args[0], type) and issubclass(args[0], Index):
+            warnings.warn("Using view(Index) on Index objects is deprecated.")
+            return self._shallow_copy()
         # TODO: Decide if this should be allowed and also whether this should
         #       be values or data...
         return self.values.view(*args, **kwargs)
