@@ -115,6 +115,7 @@ def isnull(obj):
 
 
 def _isnull_new(obj):
+    # TODO: Decide where to get index
     if lib.isscalar(obj):
         return lib.checknull(obj)
     # hack (for now) because MI registers as ndarray
