@@ -289,7 +289,7 @@ class Index(PandasObject):
         "make a shallow copy of the object"
         return self.copy(deep=False)
 
-    def __deepcopy__(self):
+    def __deepcopy__(self, memo=None):
         "make a deep copy of the object"
         return self.copy(deep=True)
 
@@ -317,14 +317,18 @@ class Index(PandasObject):
         self._id = _Identity()
 
     def view(self, *args, **kwargs):
-        if not args or kwargs:
+        shallow_copy = not args or kwargs
+        # whew!
+        single_arg_view = (args and len(args) == 1
+                           and isinstance(args[0], type)
+                           and issubclass(args[0], Index))
+        if single_arg_view:
+            warn("Using view(Index) on Index objects is deprecated.")
+        shallow_copy = shallow_copy or single_arg_view
+        if shallow_copy:
             res = self._shallow_copy()
             res._id = self._id
             return res
-        # whew!
-        if args and len(args) == 1 and isinstance(args[0], type) and issubclass(args[0], Index):
-            warn("Using view(Index) on Index objects is deprecated.")
-            return self._shallow_copy()
         # TODO: Decide if this should be allowed and also whether this should
         #       be values or data...
         return self.values.view(*args, **kwargs)
@@ -729,9 +733,6 @@ class Index(PandasObject):
         # need to reset object id
         return self._constructor(state.pop('_data'), name=state.pop('name'),
                                  fastpath=True)
-
-    def __deepcopy__(self, memo={}):
-        return self.copy(deep=True)
 
     def __contains__(self, key):
         hash(key)
@@ -2000,17 +2001,19 @@ class MultiIndex(Index):
         # not actually a shallow copy right now :P
         return type(self)(levels=self.levels, labels=self.labels,
                           names=self.names, copy=False,
-                          sortorder=self.sortorder)
+                          sortorder=self.sortorder, fastpath=True)
 
     def __new__(cls, data=None, levels=None, labels=None, sortorder=None,
                  names=None, copy=False, fastpath=False):
+        assert data is None or len(data) == 0, "Undefined behavior when data is not none"
         self = super(Index, cls).__new__(cls)
+        self._data = np.empty(0, dtype=object)
         if fastpath:
-            pass
-            # # should already be handled by ``__new__``
-            # obj.names = names
-            # obj.labels = labels
-            # obj.levels = levels
+            self._set_levels(levels)
+            self._set_labels(labels)
+            self._set_names(names)
+            self.sortorder = sortorder
+            return self
 
         if len(levels) != len(labels):
             raise ValueError(
@@ -2038,6 +2041,9 @@ class MultiIndex(Index):
             self.sortorder = sortorder
 
         return self
+
+    def __init__(self, *args, **kwargs):
+        self._reset_identity()
 
     def _get_levels(self):
         return self._levels
@@ -2147,7 +2153,7 @@ class MultiIndex(Index):
         ``deep``, but if ``deep`` is passed it will attempt to deepcopy.
         This could be potentially expensive on large MultiIndex objects.
         """
-        new_index = np.ndarray.copy(self)
+        new_index = self.view()
         if deep:
             from copy import deepcopy
             levels = levels if levels is not None else deepcopy(self.levels)
@@ -2620,16 +2626,10 @@ class MultiIndex(Index):
                 # cannot be sure whether the result will be sorted
                 sortorder = None
 
-            result = np.empty(0, dtype=object).view(type(self))
             new_labels = [lab[key] for lab in self.labels]
-
-            # an optimization
-            result._set_levels(self.levels)
-            result._set_labels(new_labels)
-            result.sortorder = sortorder
-            result._set_names(self.names)
-
-            return result
+            return MultiIndex(labels=new_labels, levels=self.levels,
+                              sortorder=sortorder, names=self.names,
+                              fastpath=True)
 
     _getitem_slice = __getitem__
 
@@ -2879,9 +2879,10 @@ class MultiIndex(Index):
 
         target = _ensure_index(target)
 
-        target_index = target
-        if isinstance(target, MultiIndex):
-            target_index = target._tuple_index
+        target_index = target.values
+        # not necessary because grabbing values anyways
+        # if isinstance(target, MultiIndex):
+        #     target_index = target._tuple_index
 
         if target_index.dtype != object:
             return np.ones(len(target_index)) * -1
