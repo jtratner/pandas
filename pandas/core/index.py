@@ -147,11 +147,6 @@ class Index(PandasObject):
     __len__ = _delegate_to_ndarray_property('__len__')
     searchsorted = _delegate_to_ndarray_method('searchsorted')
 
-    def _fastpath(self, data, name=None, **kwargs):
-        """bypass method when class inference is already working"""
-        self._data = data
-        self.name = name
-
     # like ``__array_finalize__`` but in reverse (obj is data for new index)
     # TODO: Rename this - maybe to __finalize__?
     def _reconstruct(self, data):
@@ -187,7 +182,10 @@ class Index(PandasObject):
     # side note, because of ``__new__`` method, can't ever define an
     # ``__init__`` method on Index (otherwise it'd get called here).
     def __new__(cls, data, dtype=None, copy=False, name=None, fastpath=False,
-                **kwargs):
+                names=None, **kwargs):
+        if name and names:
+            raise TypeError("Cannot specify name and names!")
+        name = name if names is None else names[0]
         # TODO: handle when type(cls) != Index [needs to skip inference]
         # no class inference! - stick with passed class
         if fastpath:
@@ -195,13 +193,10 @@ class Index(PandasObject):
             obj = super(Index, cls).__new__(cls)
             # allow arbitrary ordering
             kwargs.update({'name': name, 'dtype':dtype, 'copy': copy, 'fastpath': fastpath})
-            obj._fastpath(data, **kwargs)
+            obj._data = data
+            obj.name = name
             return obj
 
-        names = kwargs.pop('names', None)
-        if name and names:
-            raise TypeError("Cannot specify name and names!")
-        name = name or (names and names[0])
         # this is what we're going to (eventually) instantiate
         obj = None
 
@@ -313,7 +308,9 @@ class Index(PandasObject):
 
     def view(self, *args, **kwargs):
         if not args or kwargs:
-            return self._shallow_copy()
+            res = self._shallow_copy()
+            res._id = self._id
+            return res
 
         if args and isinstance(args[0], Index):
             raise AssertionError("Can't use view on Index object with Index"
@@ -389,6 +386,7 @@ class Index(PandasObject):
             new_data = self._data.view()
         if name is not None:
             names = [name]
+        names = names or self.names
         return Index(new_data, names=names, dtype=dtype, copy=False)
 
     def to_series(self):
@@ -487,7 +485,7 @@ class Index(PandasObject):
         -------
         new index (of same type and class...etc) [if inplace, returns None]
         """
-        if not com.is_list_like(name):
+        if not com.is_list_like(name) or isinstance(name, tuple):
             name = [name]
         return self.set_names(name, inplace=inplace)
 
@@ -1868,7 +1866,7 @@ class Float64Index(Index):
     # when this is not longer object dtype this can be changed
     #_engine_type = _index.Float64Engine
 
-    def __init__(self, data, dtype=None, copy=False, name=None, fastpath=False):
+    def __init__(self, data, dtype=None, copy=False, name=None, names=None, fastpath=False):
         self._reset_identity()
 
         if fastpath:
