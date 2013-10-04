@@ -119,10 +119,12 @@ def isnull(obj):
 
 
 def _isnull_new(obj):
+    # TODO: Decide where to get index
+    import pandas as pd
     if lib.isscalar(obj):
         return lib.checknull(obj)
 
-    if isinstance(obj, (ABCSeries, np.ndarray)):
+    if isinstance(obj, (ABCSeries, pd.Index, np.ndarray)):
         return _isnull_ndarraylike(obj)
     elif isinstance(obj, ABCGeneric):
         return obj.apply(isnull)

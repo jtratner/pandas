@@ -25,6 +25,14 @@ default_pprint = lambda x: com.pprint_thing(x, escape_chars=('\t', '\r', '\n'),
 
 __all__ = ['Index']
 
+# unpickle objects via 3 args (cls, data, kwargs)
+# sets fastpath to True if it's not set on class
+def _unpickle(cls, data, kwargs):
+    kwargs = dict(kwargs)
+    kwargs.setdefault('fastpath', True)
+    return cls(data, **kwargs)
+
+_unpickle.__safe_for_unpickling__ = True
 
 def _indexOp(opname):
     """
@@ -59,19 +67,21 @@ _Identity = object
 
 
 def _delegate_to_ndarray_method(name):
-    @wraps(getattr(np.ndarray, name))
     def wrapper(self, *args, **kwargs):
         return getattr(self._data, name)(*args, **kwargs)
+    wrapper.__name__ = name
+    wrapper.__doc__ = getattr(np.ndarray, '__doc__', None)
     return wrapper
 
 def _delegate_to_ndarray_property(attr, setter=None, deleter=None):
+    _setter = _deleter = None
     def getter(self):
         return getattr(self._data, attr)
-    if setter and not compat.callable(setter):
-        def setter(self, value):
+    if setter:
+        def _setter(self, value):
             setattr(self._data, attr, value)
-    if deleter and not compat.callable(deleter):
-        def deleter(self):
+    if deleter:
+        def _deleter(self):
             delattr(self._data, attr)
     return property(fget=getter, fset=setter, fdel=deleter)
 
@@ -128,12 +138,14 @@ class Index(PandasObject):
 
     name = None
     asi8 = None
+    # this + _data should be all that's needed to reconstruct the object
     _metadata = ['name']
 
     _engine_type = _index.ObjectEngine
 
     dtype = _delegate_to_ndarray_property('dtype')
     __len__ = _delegate_to_ndarray_property('__len__')
+    searchsorted = _delegate_to_ndarray_method('searchsorted')
 
     def _fastpath(self, data, name=None, **kwargs):
         """bypass method when class inference is already working"""
@@ -141,16 +153,42 @@ class Index(PandasObject):
         self.name = name
 
     # like ``__array_finalize__`` but in reverse (obj is data for new index)
+    # TODO: Rename this - maybe to __finalize__?
     def _reconstruct(self, data):
         kwargs = dict((k, getattr(self, k, None)) for k in self._metadata)
         return self.__class__(data=data, fastpath=True, **kwargs)
+
+
+    def __reduce__(self):
+        kwargs = tuple((attr, getattr(self, attr)) for attr in self._metadata)
+        return (_unpickle, # callable
+                (type(self), self._data, kwargs)) # data and kwargs - other option would be to use __setstate__ and __getstate__
+
+    def all(self):
+        return self._data.all()
+
+    def any(self):
+        return self._data.any()
+
+    @classmethod
+    def _instantiate(cls, new_klass=None, *args, **kwargs):
+        """Called from __new__ to instantiate objects (and call their __new__
+            methods if necessary"""
+        cls = new_klass or cls
+        # Only need to call __new__ if it's different than our current __new__
+        if new_klass.__new__ is not cls.__new__:
+            obj = new_klass(*args, **kwargs)
+        else:
+            obj = super(Index, cls).__new__(new_klass)
+            obj.__init__(*args, **kwargs)
+        return obj
 
 
     # side note, because of ``__new__`` method, can't ever define an
     # ``__init__`` method on Index (otherwise it'd get called here).
     def __new__(cls, data, dtype=None, copy=False, name=None, fastpath=False,
                 **kwargs):
-
+        # TODO: handle when type(cls) != Index [needs to skip inference]
         # no class inference! - stick with passed class
         if fastpath:
             # skip inheritance here, we want to get instance of class to use
@@ -160,6 +198,16 @@ class Index(PandasObject):
             obj._fastpath(data, **kwargs)
             return obj
 
+        names = kwargs.pop('names', None)
+        if name and names:
+            raise TypeError("Cannot specify name and names!")
+        name = name or (names and names[0])
+        # this is what we're going to (eventually) instantiate
+        obj = None
+
+        # TODO: Decrease the amount of returns here by clarifying if statements
+        #       (easiest is to convert into else statements + and then look for
+        #       obj not None)
         from pandas.tseries.period import PeriodIndex
         if isinstance(data, np.ndarray):
             if issubclass(data.dtype.type, np.datetime64):
@@ -170,7 +218,7 @@ class Index(PandasObject):
                 else:
                     return result
             elif issubclass(data.dtype.type, np.timedelta64):
-                return Int64Index(data, copy=copy, name=name)
+                return cls._instantiate(Int64Index, data, copy=copy, name=name)
 
             if dtype is not None:
                 try:
@@ -178,10 +226,10 @@ class Index(PandasObject):
                 except TypeError:
                     pass
             elif isinstance(data, PeriodIndex):
-                return PeriodIndex(data, copy=copy, name=name, **kwargs)
+                return cls._instantiate(PeriodIndex, data, copy=copy, name=name, **kwargs)
 
             if issubclass(data.dtype.type, np.integer):
-                return Int64Index(data, copy=copy, dtype=dtype, name=name)
+                return cls._instantiate(Int64Index, data, copy=copy, dtype=dtype, name=name)
 
             subarr = com._asarray_tuplesafe(data, dtype=object)
 
@@ -196,25 +244,32 @@ class Index(PandasObject):
         else:
             # other iterable of some kind
             subarr = com._asarray_tuplesafe(data, dtype=object)
-            # # not here previously, is it necessary?
-            # if copy:
-            #     subarr = subarr.copy()
 
         if dtype is None:
             inferred = lib.infer_dtype(subarr)
+            # consider not needing to do this
             if inferred == 'integer':
-                return Int64Index(subarr.astype('i8'), copy=copy, name=name)
+                obj = cls._instantiate(Int64Index, subarr.astype('i8'), copy=copy, name=name)
             elif inferred in ['floating','mixed-integer-float']:
-                return Float64Index(subarr, copy=copy, name=name)
+                obj = cls._instantiate(Float64Index, subarr, copy=copy, name=name)
             elif inferred != 'string':
                 if (inferred.startswith('datetime') or
                         tslib.is_timestamp_array(subarr)):
                     from pandas.tseries.index import DatetimeIndex
-                    return DatetimeIndex(data, copy=copy, name=name, **kwargs)
+                    # DatetimeIndex has its own new
+                    obj = cls._instantiate(DatetimeIndex, data, copy=copy, name=name, **kwargs)
                 elif inferred == 'period':
-                    return PeriodIndex(subarr, name=name, **kwargs)
+                    obj = cls._instantiate(PeriodIndex, subarr, name=name, **kwargs)
 
+        if obj is not None:
+            return obj
+
+        # try again with the fastpath, since we've prepped everything for
+        # object-ish index now.
         return Index(subarr, copy=False, name=name, fastpath=True, **kwargs)
+
+    def __init__(self, *args, **kwargs):
+        self._reset_identity()
 
     def __unicode__(self):
         """
@@ -224,6 +279,14 @@ class Index(PandasObject):
         """
         prepr = com.pprint_thing(self, escape_chars=('\t', '\r', '\n'),quote_strings=True)
         return '%s(%s, dtype=%s)' % (type(self).__name__, prepr, self.dtype)
+
+    def __copy__(self):
+        "make a shallow copy of the object"
+        return self.copy(deep=False)
+
+    def __deepcopy__(self):
+        "make a deep copy of the object"
+        return self.copy(deep=True)
 
     def is_(self, other):
         """
@@ -249,10 +312,19 @@ class Index(PandasObject):
         self._id = _Identity()
 
     def view(self, *args, **kwargs):
-        result = super(Index, self).view(*args, **kwargs)
-        if isinstance(result, Index):
-            result._id = self._id
-        return result
+        if not args or kwargs:
+            return self._shallow_copy()
+
+        if args and isinstance(args[0], Index):
+            raise AssertionError("Can't use view on Index object with Index"
+                                 " classes %r" % args[0])
+        # TODO: Decide if this should be allowed and also whether this should
+        #       be values or data...
+        return self.values.view(*args, **kwargs)
+
+    @property
+    def ndim(self):
+        return 1
 
     # construction helpers
     @classmethod
@@ -284,10 +356,10 @@ class Index(PandasObject):
         return self.values
 
     def __array_wrap__(self, result):
-        return Index(result, name=self.name)
+        return self._reconstruct(result)
 
     def _shallow_copy(self):
-        return self.view()
+        return self._reconstruct(self._data)
 
     def copy(self, names=None, name=None, dtype=None, deep=False):
         """
@@ -450,6 +522,8 @@ class Index(PandasObject):
     @property
     def values(self):
         return self._data
+    # This should be a non-copying method
+    _values = values
 
     def get_values(self):
         return self.values
@@ -817,7 +891,7 @@ class Index(PandasObject):
 
         if label not in self:
             # doesn't this require index to be sorted??
-            loc = self._data.searchsorted(label, side='left')
+            loc = self.searchsorted(label, side='left')
             if loc > 0:
                 return self[loc - 1]
             else:
@@ -1231,7 +1305,7 @@ class Index(PandasObject):
         return lib.ismember(self._array_values(), value_set)
 
     def _array_values(self):
-        return self
+        return self._values
 
     def _get_method(self, method):
         if method:
@@ -1701,7 +1775,9 @@ class Int64Index(Index):
 
     _engine_type = _index.Int64Engine
 
-    def __init__(self, data, dtype=None, copy=False, name=None, fastpath=False):
+    def __init__(self, data, dtype=None, copy=False, name=None, fastpath=False,
+                 names=None):
+        self._reset_identity()
         if fastpath:
             subarr = data.view(cls)
             subarr.name = name
@@ -1790,6 +1866,7 @@ class Float64Index(Index):
     #_engine_type = _index.Float64Engine
 
     def __init__(self, data, dtype=None, copy=False, name=None, fastpath=False):
+        self._reset_identity()
 
         if fastpath:
             self._data = data
@@ -1904,11 +1981,21 @@ class MultiIndex(Index):
     _metadata = ['names']
     rename = Index.set_names
 
-    def __init__(self, data=None, levels=None, labels=None, sortorder=None,
+    def _shallow_copy(self):
+        # not actually a shallow copy right now :P
+        return type(self)(levels=self.levels, labels=self.labels,
+                          names=self.names, copy=False,
+                          sortorder=self.sortorder)
+
+    def __new__(cls, data=None, levels=None, labels=None, sortorder=None,
                  names=None, copy=False, fastpath=False):
+        self = super(Index, cls).__new__(cls)
         if fastpath:
-            # should already be handled by ``__new__``
-            return
+            pass
+            # # should already be handled by ``__new__``
+            # obj.names = names
+            # obj.labels = labels
+            # obj.levels = levels
 
         if len(levels) != len(labels):
             raise ValueError(
@@ -1923,6 +2010,7 @@ class MultiIndex(Index):
 
             return Index(levels[0], name=name, copy=True).take(labels[0])
 
+        self._reset_identity()
         self._set_levels(levels, copy=copy)
         self._set_labels(labels, copy=copy)
 
@@ -1934,7 +2022,7 @@ class MultiIndex(Index):
         else:
             self.sortorder = sortorder
 
-        return
+        return self
 
     def _get_levels(self):
         return self._levels
@@ -2194,22 +2282,23 @@ class MultiIndex(Index):
 
     @property
     def values(self):
-        if self._is_v2:
-            return self.view(np.ndarray)
-        else:
-            if self._tuples is not None:
-                return self._tuples
-
-            values = []
-            for lev, lab in zip(self.levels, self.labels):
-                taken = com.take_1d(lev.values, lab)
-                # Need to box timestamps, etc.
-                if hasattr(lev, '_box_values'):
-                    taken = lev._box_values(taken)
-                values.append(taken)
-
-            self._tuples = lib.fast_zip(values)
+        # what was this testing?? It's always an empty array...
+        # if self._is_v2:
+        #     return self.view(np.ndarray)
+        # else:
+        if self._tuples is not None:
             return self._tuples
+
+        values = []
+        for lev, lab in zip(self.levels, self.labels):
+            taken = com.take_1d(lev.values, lab)
+            # Need to box timestamps, etc.
+            if hasattr(lev, '_box_values'):
+                taken = lev._box_values(taken)
+            values.append(taken)
+
+        self._tuples = lib.fast_zip(values)
+        return self._tuples
 
     # fml
     @property
@@ -2481,25 +2570,21 @@ class MultiIndex(Index):
         except KeyError:
             return False
 
-    def __reduce__(self):
+    def __getstate__(self):
         """Necessary for making this object picklable"""
-        object_state = list(np.ndarray.__reduce__(self))
-        subclass_state = ([lev.view(np.ndarray) for lev in self.levels],
-                          [label.view(np.ndarray) for label in self.labels],
-                          self.sortorder, list(self.names))
-        object_state[2] = (object_state[2], subclass_state)
-        return tuple(object_state)
+        return ([lev.view(np.ndarray) for lev in self.levels],
+                [label.view(np.ndarray) for label in self.labels],
+                self.sortorder, list(self.names))
 
     def __setstate__(self, state):
         """Necessary for making this object picklable"""
-        nd_state, own_state = state
-        np.ndarray.__setstate__(self, nd_state)
-        levels, labels, sortorder, names = own_state
+        levels, labels, sortorder, names = state
 
         self._set_levels([Index(x) for x in levels])
         self._set_labels(labels)
         self._set_names(names)
         self.sortorder = sortorder
+        self._reset_identity()
 
     def __getitem__(self, key):
         if np.isscalar(key):
