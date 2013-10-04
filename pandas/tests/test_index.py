@@ -1141,7 +1141,8 @@ class TestInt64Index(unittest.TestCase):
         self.assertRaises(TypeError, Int64Index, data)
 
     def test_view_Index(self):
-        self.index.view(Index)
+        with tm.assert_produces_warning(UserWarning):
+            self.index.view(Index)
 
     def test_prevent_casting(self):
         result = self.index.astype('O')
