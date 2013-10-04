@@ -187,6 +187,9 @@ class Index(PandasObject):
         if name and names:
             raise TypeError("Cannot specify name and names!")
         name = name if names is None else names[0]
+        if cls != Index:
+            kwargs.update({'name': name, 'dtype':dtype, 'copy': copy, 'fastpath': fastpath})
+            return cls._instantiate(cls, data, **kwargs)
         # TODO: handle when type(cls) != Index [needs to skip inference]
         # no class inference! - stick with passed class
         if fastpath:
@@ -1778,12 +1781,10 @@ class Int64Index(Index):
                  names=None):
         self._reset_identity()
         if fastpath:
-            subarr = data.view(cls)
-            subarr.name = name
-            return subarr
+            return
 
         # isscalar, generators handled in coerce_to_ndarray
-        data = cls._coerce_to_ndarray(data)
+        data = self._coerce_to_ndarray(data)
 
         if issubclass(data.dtype.type, compat.string_types):
             self._string_data_error(data)
