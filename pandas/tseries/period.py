@@ -7,7 +7,7 @@ from pandas.core.base import PandasObject
 
 from pandas.tseries.frequencies import (get_freq_code as _gfc,
                                         _month_numbers, FreqGroup)
-from pandas.tseries.index import DatetimeIndex, Int64Index, Index
+from pandas.tseries.index import DatetimeIndex, Int64Index, Index, _unpickle
 from pandas.tseries.tools import parse_time_string
 import pandas.tseries.frequencies as _freq_mod
 
@@ -562,7 +562,14 @@ class PeriodIndex(Int64Index):
     def __new__(cls, data=None, ordinal=None, freq=None, start=None, end=None,
                 periods=None, copy=False, name=None, year=None, month=None,
                 quarter=None, day=None, hour=None, minute=None, second=None,
-                tz=None):
+                tz=None, fastpath=False):
+        # fastpath is basically only with freq, data and name
+        if fastpath:
+            obj = super(Index, cls).__new__(cls)
+            obj._data = data
+            obj.freq = freq
+            obj.name = name
+            return obj
 
         freq = _freq_mod.get_standard_freq(freq)
 
@@ -592,7 +599,7 @@ class PeriodIndex(Int64Index):
 
     def __init__(self, *args, **kwargs):
         # skip call to __init__ after return
-        pass
+        self._reset_identity()
 
     @classmethod
     def _generate_range(cls, start, end, periods, freq, fields):
@@ -712,7 +719,7 @@ class PeriodIndex(Int64Index):
         return Index(self._box_values(self.values), dtype=object)
 
     def _array_values(self):
-        return self.asobject
+        return self.asobject.values
 
     def astype(self, dtype):
         dtype = np.dtype(dtype)
@@ -769,10 +776,7 @@ class PeriodIndex(Int64Index):
         end = how == 'E'
         new_data = tslib.period_asfreq_arr(self.values, base1, base2, end)
 
-        result = new_data.view(PeriodIndex)
-        result.name = self.name
-        result.freq = freq
-        return result
+        return PeriodIndex(new_data, name=self.name, freq=freq, fastpath=True)
 
     def to_datetime(self, dayfirst=False):
         return self.to_timestamp()
@@ -796,11 +800,12 @@ class PeriodIndex(Int64Index):
     def map(self, f):
         try:
             result = f(self)
-            if not isinstance(result, np.ndarray):
+            if not isinstance(result, (np.ndarray, Index)):
                 raise TypeError
             return result
         except Exception:
-            return _algos.arrmap_object(self.asobject, f)
+            return self._reconstruct(_algos.arrmap_object(self.asobject.values,
+                                                          f))
 
     def _get_object_array(self):
         freq = self.freq
@@ -1035,8 +1040,9 @@ class PeriodIndex(Int64Index):
 
     def _apply_meta(self, rawarr):
         if not isinstance(rawarr, PeriodIndex):
-            rawarr = rawarr.view(PeriodIndex)
-        rawarr.freq = self.freq
+            return PeriodIndex(rawarr, freq=self.freq)
+        else:
+            rawarr.freq = self.freq
         return rawarr
 
     def __getitem__(self, key):
@@ -1116,10 +1122,8 @@ class PeriodIndex(Int64Index):
         """
         indices = com._ensure_platform_int(indices)
         taken = self.values.take(indices, axis=axis)
-        taken = taken.view(PeriodIndex)
-        taken.freq = self.freq
-        taken.name = self.name
-        return taken
+        return PeriodIndex(taken, name=self.name, freq=self.freq,
+                           fastpath=True)
 
     def append(self, other):
         """
@@ -1161,24 +1165,23 @@ class PeriodIndex(Int64Index):
         return Index(com._concat_compat(to_concat), name=name)
 
     def __reduce__(self):
-        """Necessary for making this object picklable"""
-        object_state = list(np.ndarray.__reduce__(self))
-        subclass_state = (self.name, self.freq)
-        object_state[2] = (object_state[2], subclass_state)
-        return tuple(object_state)
+        return (_unpickle,
+                # decide if okay to just do freq and name like this...
+                (type(self), self._data, dict(name=self.name, freq=self.freq))
+                )
 
-    def __setstate__(self, state):
-        """Necessary for making this object picklable"""
-        if len(state) == 2:
-            nd_state, own_state = state
-            np.ndarray.__setstate__(self, nd_state)
-            self.name = own_state[0]
-            try:  # backcompat
-                self.freq = own_state[1]
-            except:
-                pass
-        else:  # pragma: no cover
-            np.ndarray.__setstate__(self, state)
+    # def __setstate__(self, state):
+    #     """Necessary for making this object picklable"""
+    #     if len(state) == 2:
+    #         nd_state, own_state = state
+    #         np.ndarray.__setstate__(self, nd_state)
+    #         self.name = own_state[0]
+    #         try:  # backcompat
+    #             self.freq = own_state[1]
+    #         except:
+    #             pass
+    #     else:  # pragma: no cover
+    #         np.ndarray.__setstate__(self, state)
 
 
 def _get_ordinal_range(start, end, periods, freq):

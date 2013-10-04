@@ -1353,13 +1353,15 @@ class DatetimeIndex(Int64Index):
     # Try to run function on index first, and then on elements of index
     # Especially important for group-by functionality
     def map(self, f):
+        "Applies func to entire index or to elements. Returns ndarray"
+        # TODO: Make sre this isn't copying
         try:
-            result = f(self)
+            result = f(self.values)
             if not isinstance(result, np.ndarray):
                 raise TypeError
             return result
         except Exception:
-            return _algos.arrmap_object(self.asobject, f)
+            return _algos.arrmap_object(self.asobject.values, f)
 
     # alias to offset
     @property
