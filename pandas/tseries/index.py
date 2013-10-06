@@ -442,9 +442,10 @@ class DatetimeIndex(Int64Index):
     @classmethod
     def _simple_new(cls, values, name, freq=None, tz=None):
         if values.dtype != _NS_DTYPE:
+            values = getattr(values, 'values', values)
             values = com._ensure_int64(values).view(_NS_DTYPE)
 
-        return cls(values, name=name, offset=freq, tz=tools._maybe_get_tz(tz))
+        return cls(values, name=name, freq=freq, tz=tools._maybe_get_tz(tz))
 
 
     @property
