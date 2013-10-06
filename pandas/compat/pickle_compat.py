@@ -24,8 +24,9 @@ def load_reduce(self):
 
     try:
         value = func(*args)
-    except:
-
+    except Exception as e:
+        print(self.stack)
+        print(e)
         # try to reencode the arguments
         if self.encoding is not None:
             args = tuple([ arg.encode(self.encoding) if isinstance(arg, string_types) else arg for arg in args ])
