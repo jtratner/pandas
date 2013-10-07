@@ -919,6 +919,7 @@ class Grouper(object):
         return trans_func(result)
 
     def agg_series(self, obj, func):
+        obj = com._values_from_object(obj, index_only=True)
         try:
             return self._aggregate_series_fast(obj, func)
         except Exception:
@@ -961,6 +962,7 @@ class Grouper(object):
             counts[label] = group.shape[0]
             result[label] = res
 
+        result = com._values_from_object(result, index_only=True)
         result = lib.maybe_convert_objects(result, try_float=0)
         return result, counts
 
@@ -1306,7 +1308,8 @@ def _get_grouper(obj, key=None, axis=0, level=None, sort=True):
                 raise ValueError('level > 0 only valid with MultiIndex')
 
             level = None
-            key = group_axis
+            key = com._values_from_object(group_axis, index_only=True)
+    group_axis = com._values_from_object(group_axis, index_only=True)
 
     if isinstance(key, CustomGrouper):
         gpr = key.get_grouper(obj)
@@ -2413,15 +2416,16 @@ class DataSplitter(object):
     @cache_readonly
     def sort_idx(self):
         # Counting sort indexer
-        return _algos.groupsort_indexer(self.labels, self.ngroups)[0]
+        return _algos.groupsort_indexer(com._values_from_object(self.labels,
+            index_only=True), self.ngroups)[0]
 
     def __iter__(self):
         sdata = self._get_sorted_data()
 
         if self.ngroups == 0:
             raise StopIteration
-
-        starts, ends = lib.generate_slices(self.slabels, self.ngroups)
+        slabels = com._values_from_object(self.slabels, index_only=True)
+        starts, ends = lib.generate_slices(slabels, self.ngroups)
 
         for i, (start, end) in enumerate(zip(starts, ends)):
             # Since I'm now compressing the group ids, it's now not "possible"

@@ -463,7 +463,7 @@ class Series(generic.NDFrame):
                     i = _maybe_convert_indices(i, len(self))
                     return self.reindex(i, takeable=True)
                 else:
-                    return _index.get_value_at(self, i)
+                    return _index.get_value_at(self.values, i)
 
     @property
     def _is_mixed_type(self):
