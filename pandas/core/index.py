@@ -63,8 +63,14 @@ def _shouldbe_timestamp(obj):
             or tslib.is_datetime64_array(obj)
             or tslib.is_timestamp_array(obj))
 
-
-_Identity = object
+counter = [0]
+class _Identity(object):
+    def __init__(self):
+        self.index = counter[0]
+        counter[0] += 1
+    def __repr__(self):
+        return "id: %s" % self.index
+    __str__ = __unicode__ = __repr__
 
 
 def _delegate_to_ndarray_method(name):
