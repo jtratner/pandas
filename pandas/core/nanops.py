@@ -5,6 +5,7 @@ import functools
 
 import numpy as np
 
+import pandas as pd
 from pandas.core.common import isnull, notnull, _values_from_object, is_float
 import pandas.core.common as com
 import pandas.lib as lib
@@ -97,7 +98,7 @@ def _bn_ok_dtype(dt):
 
 
 def _has_infs(result):
-    if isinstance(result, np.ndarray):
+    if isinstance(result, (np.ndarray, pd.Index)):
         if result.dtype == 'f8':
             return lib.has_infs_f8(result)
         elif result.dtype == 'f4':
@@ -176,12 +177,12 @@ def _wrap_results(result,dtype):
     """ wrap our results if needed """
 
     if issubclass(dtype.type, np.datetime64):
-        if not isinstance(result, np.ndarray):
+        if not isinstance(result, (np.ndarray, pd.Index)):
             result = lib.Timestamp(result)
         else:
             result = result.view(dtype)
     elif issubclass(dtype.type, np.timedelta64):
-        if not isinstance(result, np.ndarray):
+        if not isinstance(result, (np.ndarray, pd.Index)):
 
             # this is a scalar timedelta result!
             # we have series convert then take the element (scalar)
@@ -380,7 +381,7 @@ def nanskew(values, axis=None, skipna=True):
     result = ((np.sqrt((count ** 2 - count)) * C) /
               ((count - 2) * np.sqrt(B) ** 3))
 
-    if isinstance(result, np.ndarray):
+    if isinstance(result, (np.ndarray, pd.Index)):
         result = np.where(B == 0, 0, result)
         result[count < 3] = np.nan
         return result
@@ -414,7 +415,7 @@ def nankurt(values, axis=None, skipna=True):
 
     result = (((count * count - 1.) * D / (B * B) - 3 * ((count - 1.) ** 2)) /
               ((count - 2.) * (count - 3.)))
-    if isinstance(result, np.ndarray):
+    if isinstance(result, (np.ndarray, pd.Index)):
         result = np.where(B == 0, 0, result)
         result[count < 4] = np.nan
         return result
@@ -478,7 +479,7 @@ def _maybe_null_out(result, axis, mask):
 
 
 def _zero_out_fperr(arg):
-    if isinstance(arg, np.ndarray):
+    if isinstance(arg, (np.ndarray, pd.Index)):
         return np.where(np.abs(arg) < 1e-14, 0, arg)
     else:
         return 0 if np.abs(arg) < 1e-14 else arg
@@ -551,7 +552,7 @@ def nancov(a, b, min_periods=None):
 
 
 def _ensure_numeric(x):
-    if isinstance(x, np.ndarray):
+    if isinstance(x, (np.ndarray, pd.Index)):
         if x.dtype == np.object_:
             x = x.astype(np.float64)
     elif not (com.is_float(x) or com.is_integer(x) or com.is_complex(x)):
