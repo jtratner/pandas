@@ -354,7 +354,7 @@ def encode(obj):
                 'klass': obj.__class__.__name__,
                 'indices': obj.indices,
                 'length': obj.length}
-    elif isinstance(obj, np.ndarray) and obj.dtype not in ['float64', 'int64']:
+    elif isinstance(obj, (np.ndarray, Index)) and obj.dtype not in ['float64', 'int64']:
         return {'typ': 'ndarray',
                 'shape': obj.shape,
                 'ndim': obj.ndim,

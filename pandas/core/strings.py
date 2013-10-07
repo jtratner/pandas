@@ -3,6 +3,7 @@ import numpy as np
 from pandas.compat import zip
 from pandas.core.common import isnull, _values_from_object
 from pandas.core.series import Series
+from pandas.core.index import Index
 from pandas.core.frame import DataFrame
 import pandas.compat as compat
 import re
@@ -10,7 +11,7 @@ import pandas.lib as lib
 
 
 def _get_array_list(arr, others):
-    if isinstance(others[0], (list, np.ndarray)):
+    if isinstance(others[0], (list, np.ndarray, Index)):
         arrays = [arr] + list(others)
     else:
         arrays = [arr, others]
@@ -94,7 +95,7 @@ def _na_map(f, arr, na_result=np.nan):
 def _map(f, arr, na_mask=False, na_value=np.nan):
     if isinstance(arr, Series):
         arr = arr.values
-    if not isinstance(arr, np.ndarray):
+    if not isinstance(arr, (np.ndarray, Index)):
         arr = np.asarray(arr, dtype=object)
     if na_mask:
         mask = isnull(arr)

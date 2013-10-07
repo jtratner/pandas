@@ -2078,6 +2078,7 @@ class TestPeriodIndex(TestCase):
             self.assert_(isinstance(res, (np.ndarray, Index)))
             # should map return an ndarray or not??
             # tm.assert_isinstance(res, np.ndarray)
+            tm.assert_isinstance(res, (np.ndarray, Index))
 
             # preserve element types
             self.assert_(all(isinstance(resi, t) for resi in res))

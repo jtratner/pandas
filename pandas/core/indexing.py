@@ -326,7 +326,8 @@ class _NDFrameIndexer(object):
                             setter(item, np.nan)
 
                 # we have an equal len ndarray to our labels
-                elif isinstance(value, np.ndarray) and value.ndim == 2:
+                # should this include index??
+                elif isinstance(value, (np.ndarray, Index)) and value.ndim == 2:
                     if len(labels) != value.shape[1]:
                         raise ValueError('Must have equal len keys and value when'
                                          ' setting with an ndarray')

@@ -121,7 +121,7 @@ def _isnull_new(obj):
     # hack (for now) because MI registers as ndarray
     elif isinstance(obj, pd.MultiIndex):
         raise NotImplementedError("isnull is not defined for MultiIndex")
-    elif isinstance(obj, (ABCSeries, np.ndarray)):
+    if isinstance(obj, (ABCSeries, np.ndarray, pd.Index)):
         return _isnull_ndarraylike(obj)
     elif isinstance(obj, ABCGeneric):
         return obj.apply(isnull)
@@ -145,10 +145,9 @@ def _isnull_old(obj):
     '''
     if lib.isscalar(obj):
         return lib.checknull_old(obj)
-    # hack (for now) because MI registers as ndarray
     elif isinstance(obj, pd.MultiIndex):
         raise NotImplementedError("isnull is not defined for MultiIndex")
-    elif isinstance(obj, (ABCSeries, np.ndarray)):
+    if isinstance(obj, (ABCSeries, np.ndarray, pd.Index)):
         return _isnull_ndarraylike_old(obj)
     elif isinstance(obj, ABCGeneric):
         return obj.apply(_isnull_old)
@@ -300,7 +299,7 @@ def mask_missing(arr, values_to_mask):
     Return a masking array of same size/shape as arr
     with entries equaling any member of values_to_mask set to True
     """
-    if not isinstance(values_to_mask, (list, np.ndarray)):
+    if not isinstance(values_to_mask, (list, np.ndarray, pd.Index)):
         values_to_mask = [values_to_mask]
 
     try:
@@ -318,7 +317,7 @@ def mask_missing(arr, values_to_mask):
 
             # if x is a string and mask is not, then we get a scalar
             # return value, which is not good
-            if not isinstance(mask, np.ndarray):
+            if not isinstance(mask, (np.ndarray, pd.Index)):
                 m = mask
                 mask = np.empty(arr.shape, dtype=np.bool)
                 mask.fill(m)
@@ -855,7 +854,7 @@ def _maybe_cast_scalar(dtype, value):
 def _maybe_promote(dtype, fill_value=np.nan):
 
     # if we passed an array here, determine the fill value by dtype
-    if isinstance(fill_value, np.ndarray):
+    if isinstance(fill_value, (np.ndarray, pd.Index)):
         if issubclass(fill_value.dtype.type, (np.datetime64, np.timedelta64)):
             fill_value = tslib.iNaT
         else:
@@ -968,7 +967,7 @@ def _maybe_upcast_putmask(result, mask, other, dtype=None, change=None):
 
             # we have a scalar or len 0 ndarray
             # and its nan and we are changing some values
-            if np.isscalar(other) or (isinstance(other, np.ndarray) and other.ndim < 1):
+            if np.isscalar(other) or (isinstance(other, (np.ndarray, pd.Index)) and other.ndim < 1):
                 if isnull(other):
                     return changeit()
 
@@ -1116,7 +1115,7 @@ def _fill_zeros(result, y, fill):
         return the result """
 
     if fill is not None:
-        if not isinstance(y, np.ndarray):
+        if not isinstance(y, (np.ndarray, pd.Index)):
             dtype, value = _infer_dtype_from_scalar(y)
             y = pa.empty(result.shape, dtype=dtype)
             y.fill(value)
@@ -1456,7 +1455,7 @@ def _get_fill_func(method):
 def _maybe_box(indexer, values, obj, key):
 
     # if we have multiples coming back, box em
-    if isinstance(values, np.ndarray):
+    if isinstance(values, (np.ndarray, pd.Index)):
         return obj[indexer.get_loc(key)]
 
     # return the value
@@ -1575,7 +1574,7 @@ def _possibly_cast_to_datetime(value, dtype, coerce=False):
 
         # only do this if we have an array and the dtype of the array is not setup already
         # we are not an integer/object, so don't bother with this conversion
-        if isinstance(value, np.ndarray) and not (issubclass(value.dtype.type, np.integer) or value.dtype == np.object_):
+        if isinstance(value, (np.ndarray, pd.Index)) and not (issubclass(value.dtype.type, np.integer) or value.dtype == np.object_):
             pass
 
         else:
@@ -1599,7 +1598,7 @@ def _possibly_cast_to_datetime(value, dtype, coerce=False):
 
 
 def _is_bool_indexer(key):
-    if isinstance(key, (ABCSeries, np.ndarray)):
+    if isinstance(key, (ABCSeries, np.ndarray, pd.Index)):
         if key.dtype == np.object_:
             key = np.asarray(_values_from_object(key))
 
@@ -1874,7 +1873,7 @@ def _index_labels_to_array(labels):
     if isinstance(labels, (compat.string_types, tuple)):
         labels = [labels]
 
-    if not isinstance(labels, (list, np.ndarray)):
+    if not isinstance(labels, (list, np.ndarray, pd.Index)):
         try:
             labels = list(labels)
         except TypeError:  # non-iterable

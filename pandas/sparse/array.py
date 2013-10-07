@@ -14,6 +14,7 @@ from pandas import compat, lib
 from pandas.compat import range
 
 from pandas._sparse import BlockIndex, IntIndex
+from pandas.core.index import Index
 import pandas._sparse as splib
 import pandas.index as _index
 import pandas.core.ops as ops
@@ -26,7 +27,7 @@ def _arith_method(op, name, str_rep=None, default_axis=None,
     code duplication.
     """
     def wrapper(self, other):
-        if isinstance(other, np.ndarray):
+        if isinstance(other, (np.ndarray, Index)):
             if len(self) != len(other):
                 raise AssertionError("length mismatch: %d vs. %d" %
                                      (len(self), len(other)))

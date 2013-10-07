@@ -364,7 +364,7 @@ class TestTimeSeries(unittest.TestCase):
 
         def _check_rng(rng):
             converted = rng.to_pydatetime()
-            tm.assert_isinstance(converted, np.ndarray)
+            tm.assert_isinstance(converted, (np.ndarray, Index))
             for x, stamp in zip(converted, rng):
                 tm.assert_isinstance(x, datetime)
                 self.assertEquals(x, stamp.to_pydatetime())

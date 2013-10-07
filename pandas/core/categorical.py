@@ -16,7 +16,7 @@ from pandas.core import format as fmt
 
 def _cat_compare_op(op):
     def f(self, other):
-        if isinstance(other, (Categorical, np.ndarray)):
+        if isinstance(other, (Categorical, np.ndarray, Index)):
             values = np.asarray(self)
             f = getattr(values, op)
             return f(np.asarray(other))

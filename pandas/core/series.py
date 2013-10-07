@@ -427,7 +427,7 @@ class Series(generic.NDFrame):
         if v == 'datetime':
             return lib.map_infer(values, lib.Timestamp)
 
-        if isinstance(values, np.ndarray):
+        if isinstance(values, (np.ndarray, Index)):
             return self.__class__(values)
 
         return values
@@ -1463,7 +1463,7 @@ class Series(generic.NDFrame):
                                      index=other.columns)
         elif isinstance(other, Series):
             return np.dot(lvals, rvals)
-        elif isinstance(rvals, np.ndarray):
+        elif isinstance(rvals, (np.ndarray, Index)):
             return np.dot(lvals, rvals)
         else:  # pragma: no cover
             raise TypeError('unsupported type: %s' % type(other))

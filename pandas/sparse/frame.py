@@ -86,7 +86,7 @@ class SparseDataFrame(DataFrame):
             mgr = self._init_dict(data, index, columns)
             if dtype is not None:
                 mgr = mgr.astype(dtype)
-        elif isinstance(data, (np.ndarray, list)):
+        elif isinstance(data, (np.ndarray, Index, list)):
             mgr = self._init_matrix(data, index, columns)
             if dtype is not None:
                 mgr = mgr.astype(dtype)
@@ -340,7 +340,7 @@ class SparseDataFrame(DataFrame):
         if isinstance(key, slice):
             date_rng = self.index[key]
             return self.reindex(date_rng)
-        elif isinstance(key, (np.ndarray, list, Series)):
+        elif isinstance(key, (np.ndarray, Index, list, Series)):
             return self._getitem_array(key)
         else:
             return self._get_item_cache(key)

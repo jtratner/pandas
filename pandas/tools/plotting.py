@@ -10,7 +10,7 @@ import numpy as np
 
 from pandas.util.decorators import cache_readonly
 import pandas.core.common as com
-from pandas.core.index import MultiIndex
+from pandas.core.index import MultiIndex, Index
 from pandas.core.series import Series, remove_na
 from pandas.tseries.index import DatetimeIndex
 from pandas.tseries.period import PeriodIndex, Period
@@ -804,7 +804,7 @@ class MPLPlot(object):
         self.fig = fig
         self.axes = None
 
-        if not isinstance(secondary_y, (bool, tuple, list, np.ndarray)):
+        if not isinstance(secondary_y, (bool, tuple, list, np.ndarray, Index)):
             secondary_y = [secondary_y]
         self.secondary_y = secondary_y
 
@@ -843,7 +843,7 @@ class MPLPlot(object):
 
     def _iter_data(self):
         from pandas.core.frame import DataFrame
-        if isinstance(self.data, (Series, np.ndarray)):
+        if isinstance(self.data, (Series, np.ndarray, Index)):
             yield self.label, np.asarray(self.data)
         elif isinstance(self.data, DataFrame):
             df = self.data
@@ -883,7 +883,7 @@ class MPLPlot(object):
         pass
 
     def _maybe_right_yaxis(self, ax):
-        _types = (list, tuple, np.ndarray)
+        _types = (list, tuple, np.ndarray, Index)
         sec_true = isinstance(self.secondary_y, bool) and self.secondary_y
         list_sec = isinstance(self.secondary_y, _types)
         has_sec = list_sec and len(self.secondary_y) > 0
@@ -1103,7 +1103,7 @@ class MPLPlot(object):
             return self.secondary_y
 
         if (isinstance(self.data, DataFrame) and
-                isinstance(self.secondary_y, (tuple, list, np.ndarray))):
+                isinstance(self.secondary_y, (tuple, list, np.ndarray, Index))):
             return self.data.columns[i] in self.secondary_y
 
     def _get_style(self, i, col_name):
@@ -1956,7 +1956,7 @@ def hist_frame(data, column=None, by=None, grid=True, xlabelsize=None,
         To be passed to hist function
     """
     if column is not None:
-        if not isinstance(column, (list, np.ndarray)):
+        if not isinstance(column, (list, np.ndarray, Index)):
             column = [column]
         data = data[column]
 

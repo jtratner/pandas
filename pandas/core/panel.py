@@ -154,7 +154,7 @@ class Panel(NDFrame):
             mgr = self._init_dict(data, passed_axes, dtype=dtype)
             copy = False
             dtype = None
-        elif isinstance(data, (np.ndarray, list)):
+        elif isinstance(data, (np.ndarray, Index, list)):
             mgr = self._init_matrix(data, passed_axes, dtype=dtype, copy=copy)
             copy = False
             dtype = None
@@ -256,7 +256,7 @@ class Panel(NDFrame):
     def _getitem_multilevel(self, key):
         info = self._info_axis
         loc = info.get_loc(key)
-        if isinstance(loc, (slice, np.ndarray)):
+        if isinstance(loc, (slice, np.ndarray, Index)):
             new_index = info[loc]
             result_index = _maybe_droplevels(new_index, key)
             slices = [loc] + [slice(None) for x in range(
@@ -532,7 +532,7 @@ class Panel(NDFrame):
             value = value.reindex(
                 **self._construct_axes_dict_for_slice(self._AXIS_ORDERS[1:]))
             mat = value.values
-        elif isinstance(value, np.ndarray):
+        elif isinstance(value, (np.ndarray, Index)):
             if value.shape != shape[1:]:
                 raise ValueError('shape of value must be {0}, shape of given '
                                  'object was {1}'.format(shape[1:],
@@ -1131,7 +1131,7 @@ class Panel(NDFrame):
 
     @staticmethod
     def _prep_ndarray(self, values, copy=True):
-        if not isinstance(values, np.ndarray):
+        if not isinstance(values, (np.ndarray, Index)):
             values = np.asarray(values)
             # NumPy strings are a pain, convert to object
             if issubclass(values.dtype.type, compat.string_types):
