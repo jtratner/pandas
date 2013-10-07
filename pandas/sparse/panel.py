@@ -68,7 +68,7 @@ class SparsePanel(Panel):
     def __init__(self, frames, items=None, major_axis=None, minor_axis=None,
                  default_fill_value=np.nan, default_kind='block',
                  copy=False):
-        if isinstance(frames, np.ndarray):
+        if isinstance(frames, (np.ndarray, Index)):
             new_frames = {}
             for item, vals in zip(items, frames):
                 new_frames[item] = \

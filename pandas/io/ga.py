@@ -314,7 +314,7 @@ class GDataReader(OAuthDataReader):
 
         if isinstance(sort, bool) and sort:
             return df.sort_index()
-        elif isinstance(sort, (compat.string_types, list, tuple, np.ndarray)):
+        elif isinstance(sort, (compat.string_types, list, tuple, np.ndarray, Index)):
             return df.sort_index(by=sort)
 
         return df
@@ -407,15 +407,15 @@ def _clean_index(index_dims, parse_dates):
     to_remove = []
     to_add = []
 
-    if isinstance(parse_dates, (list, tuple, np.ndarray)):
+    if isinstance(parse_dates, (list, tuple, np.ndarray, Index)):
         for lst in parse_dates:
-            if isinstance(lst, (list, tuple, np.ndarray)):
+            if isinstance(lst, (list, tuple, np.ndarray, Index)):
                 if _should_add(lst):
                     to_add.append('_'.join(lst))
                 to_remove.extend(lst)
     elif isinstance(parse_dates, dict):
         for name, lst in compat.iteritems(parse_dates):
-            if isinstance(lst, (list, tuple, np.ndarray)):
+            if isinstance(lst, (list, tuple, np.ndarray, Index)):
                 if _should_add(lst):
                     to_add.append(name)
                 to_remove.extend(lst)

@@ -545,7 +545,7 @@ class TextFileReader(object):
         keep_default_na = result.pop('keep_default_na')
 
         if _is_index_col(index_col):
-            if not isinstance(index_col, (list, tuple, np.ndarray)):
+            if not isinstance(index_col, (list, tuple, np.ndarray, Index)):
                 index_col = [index_col]
         result['index_col'] = index_col
 
@@ -660,7 +660,7 @@ class ParserBase(object):
 
         # validate header options for mi
         self.header = kwds.get('header')
-        if isinstance(self.header,(list,tuple,np.ndarray)):
+        if isinstance(self.header,(list,tuple,np.ndarray, Index)):
             if kwds.get('as_recarray'):
                 raise ValueError("cannot specify as_recarray when "
                                  "specifying a multi-index header")
@@ -674,7 +674,7 @@ class ParserBase(object):
             # validate index_col that only contains integers
             if self.index_col is not None:
                 is_sequence = isinstance(self.index_col, (list, tuple,
-                                                          np.ndarray))
+                                                          np.ndarray, Index))
                 if not (is_sequence and
                         all(map(com.is_integer, self.index_col)) or
                         com.is_integer(self.index_col)):
@@ -715,7 +715,7 @@ class ParserBase(object):
         if ic is None:
             ic = []
 
-        if not isinstance(ic, (list,tuple,np.ndarray)):
+        if not isinstance(ic, (list,tuple,np.ndarray, Index)):
             ic = [ ic ]
         sic = set(ic)
 
@@ -1467,7 +1467,7 @@ class PythonParser(ParserBase):
             header = self.header
 
             # we have a mi columns, so read and extra line
-            if isinstance(header, (list, tuple, np.ndarray)):
+            if isinstance(header, (list, tuple, np.ndarray, Index)):
                 have_mi_columns = True
                 header = list(header) + [header[-1] + 1]
             else:

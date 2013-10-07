@@ -660,7 +660,7 @@ def melt(frame, id_vars=None, value_vars=None,
     """
     # TODO: what about the existing index?
     if id_vars is not None:
-        if not isinstance(id_vars, (tuple, list, np.ndarray)):
+        if not isinstance(id_vars, (tuple, list, np.ndarray, Index)):
             id_vars = [id_vars]
         else:
             id_vars = list(id_vars)
@@ -668,7 +668,7 @@ def melt(frame, id_vars=None, value_vars=None,
         id_vars = []
 
     if value_vars is not None:
-        if not isinstance(value_vars, (tuple, list, np.ndarray)):
+        if not isinstance(value_vars, (tuple, list, np.ndarray, Index)):
             value_vars = [value_vars]
         frame = frame.ix[:, id_vars + value_vars]
     else:

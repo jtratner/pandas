@@ -26,7 +26,7 @@ def _arith_method(op, name, str_rep=None, default_axis=None,
     code duplication.
     """
     def wrapper(self, other):
-        if isinstance(other, np.ndarray):
+        if isinstance(other, (np.ndarray, Index)):
             if len(self) != len(other):
                 raise AssertionError("length mismatch: %d vs. %d" %
                                      (len(self), len(other)))

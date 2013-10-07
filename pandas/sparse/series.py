@@ -147,7 +147,7 @@ class SparseSeries(Series):
                 data, sparse_index = make_sparse(data, kind=kind,
                                                  fill_value=fill_value)
 
-            elif isinstance(data, (tuple, list, np.ndarray)):
+            elif isinstance(data, (tuple, list, np.ndarray, Index)):
                 # array-like
                 if sparse_index is None:
                     data, sparse_index = make_sparse(data, kind=kind,

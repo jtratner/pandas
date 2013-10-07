@@ -692,7 +692,7 @@ def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zer
                 op, str_rep, x, y, raise_on_error=True, **eval_kwargs)
         except TypeError:
             xrav = x.ravel()
-            if isinstance(y, (np.ndarray, pd.Series)):
+            if isinstance(y, (np.ndarray, pd.Index, pd.Series)):
                 dtype = np.find_common_type([x.dtype,y.dtype],[])
                 result = np.empty(x.size, dtype=dtype)
                 yrav = y.ravel()
@@ -724,7 +724,7 @@ def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zer
                 # casted = self._constructor_sliced(other, index=self.columns)
                 casted = pd.Series(other, index=self.columns)
             return self._combine_series(casted, na_op, fill_value, axis, level)
-        elif isinstance(other, np.ndarray):
+        elif isinstance(other, np.ndarray, pd.Index))):
             if other.ndim == 1:
                 if axis is not None and self._get_axis_name(axis) == 'index':
                     # casted = self._constructor_sliced(other, index=self.index)
@@ -761,7 +761,7 @@ def _flex_comp_method_FRAME(op, name, str_rep=None, default_axis='columns',
         except TypeError:
             xrav = x.ravel()
             result = np.empty(x.size, dtype=x.dtype)
-            if isinstance(y, (np.ndarray, pd.Series)):
+            if isinstance(y, (np.ndarray, pd.Index, pd.Series)):
                 yrav = y.ravel()
                 mask = notnull(xrav) & notnull(yrav)
                 result[mask] = op(np.array(list(xrav[mask])),
@@ -794,7 +794,7 @@ def _flex_comp_method_FRAME(op, name, str_rep=None, default_axis='columns',
 
             return self._combine_series(casted, na_op, None, axis, level)
 
-        elif isinstance(other, np.ndarray):
+        elif isinstance(other, np.ndarray, pd.Index))):
             if other.ndim == 1:
                 if axis is not None and self._get_axis_name(axis) == 'index':
                     casted = pd.Series(other, index=self.index)
@@ -889,7 +889,7 @@ def _comp_method_PANEL(op, name, str_rep=None, masker=False):
         except TypeError:
             xrav = x.ravel()
             result = np.empty(x.size, dtype=bool)
-            if isinstance(y, np.ndarray):
+            if isinstance(y, np.ndarray, pd.Index))):
                 yrav = y.ravel()
                 mask = notnull(xrav) & notnull(yrav)
                 result[mask] = op(np.array(list(xrav[mask])),
