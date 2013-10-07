@@ -209,7 +209,7 @@ def _possibly_cast_to_timedelta(value, coerce=True):
         return np.array([ convert(v,dtype) for v in value ], dtype='m8[ns]')
 
     # deal with numpy not being able to handle certain timedelta operations
-    if isinstance(value, (ABCSeries, np.ndarray)) and value.dtype.kind == 'm':
+    if isinstance(value, (ABCSeries, np.ndarray, Index)) and value.dtype.kind == 'm':
         if value.dtype != 'timedelta64[ns]':
             value = value.astype('timedelta64[ns]')
         return value

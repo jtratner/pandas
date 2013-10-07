@@ -50,10 +50,10 @@ def _field_accessor(name, field):
 def _join_i8_wrapper(joinf, with_indexers=True):
     @staticmethod
     def wrapper(left, right):
-        if isinstance(left, np.ndarray):
-            left = left.view('i8', type=np.ndarray)
-        if isinstance(right, np.ndarray):
-            right = right.view('i8', type=np.ndarray)
+        if isinstance(left, (np.ndarray, Index)):
+            left = left.view('i8', type=np.ndarray, Index)
+        if isinstance(right, (np.ndarray, Index)):
+            right = right.view('i8', type=np.ndarray, Index)
         results = joinf(left, right)
         if with_indexers:
             join_index, left_indexer, right_indexer = results
@@ -75,7 +75,7 @@ def _dt_index_cmp(opname):
             other = DatetimeIndex(other)
         elif isinstance(other, compat.string_types):
             other = _to_m8(other, tz=self.tz)
-        elif not isinstance(other, np.ndarray):
+        elif not isinstance(other, (np.ndarray, Index)):
             other = _ensure_datetime64(other)
         result = func(other)
 
@@ -195,8 +195,7 @@ class DatetimeIndex(Int64Index):
                                  infer_dst=infer_dst)
             obj._reset_identity()
             return obj
-        # yields data (an ndarray)
-        if not isinstance(data, np.ndarray):
+        if not isinstance(data, (np.ndarray, Index)):
             if np.isscalar(data):
                 raise ValueError('DatetimeIndex() must be called with a '
                                  'collection of some kind, %s was passed'
@@ -1358,7 +1357,8 @@ class DatetimeIndex(Int64Index):
         # TODO: Make sre this isn't copying
         try:
             result = f(self.values)
-            if not isinstance(result, np.ndarray):
+            # TOOD: probably wrong
+            if not isinstance(result, (np.ndarray, Index)):
                 raise TypeError
             return result
         except Exception:
@@ -1428,7 +1428,7 @@ class DatetimeIndex(Int64Index):
         return iter(self._get_object_index())
 
     def searchsorted(self, key, side='left'):
-        if isinstance(key, np.ndarray):
+        if isinstance(key, (np.ndarray, Index)):
             key = np.array(key, dtype=_NS_DTYPE, copy=False)
         else:
             key = _to_m8(key, tz=self.tz)

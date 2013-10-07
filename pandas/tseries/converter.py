@@ -58,7 +58,7 @@ class TimeConverter(units.ConversionInterface):
             return time2num(value)
         if isinstance(value, Index):
             return value.map(time2num)
-        if isinstance(value, (list, tuple, np.ndarray)):
+        if isinstance(value, (list, tuple, np.ndarray, Index)):
             return [time2num(x) for x in value]
         return value
 
@@ -115,7 +115,7 @@ class PeriodConverter(dates.DateConverter):
             return values.asfreq(axis.freq).values
         if isinstance(values, Index):
             return values.map(lambda x: get_datevalue(x, axis.freq))
-        if isinstance(values, (list, tuple, np.ndarray)):
+        if isinstance(values, (list, tuple, np.ndarray, Index)):
             return [get_datevalue(x, axis.freq) for x in values]
         return values
 
@@ -126,7 +126,7 @@ def get_datevalue(date, freq):
     elif isinstance(date, (str, datetime, pydt.date, pydt.time)):
         return Period(date, freq).ordinal
     elif (com.is_integer(date) or com.is_float(date) or
-          (isinstance(date, np.ndarray) and (date.size == 1))):
+          (isinstance(date, (np.ndarray, Index)) and (date.size == 1))):
         return date
     elif date is None:
         return None
@@ -167,8 +167,8 @@ class DatetimeConverter(dates.DateConverter):
             return values
         elif isinstance(values, compat.string_types):
             return try_parse(values)
-        elif isinstance(values, (list, tuple, np.ndarray)):
-            if not isinstance(values, np.ndarray):
+        elif isinstance(values, (list, tuple, np.ndarray, Index)):
+            if not isinstance(values, (np.ndarray, Index)):
                 values = com._asarray_tuplesafe(values)
 
             if com.is_integer_dtype(values) or com.is_float_dtype(values):

@@ -622,7 +622,7 @@ class PeriodIndex(Int64Index):
 
     @classmethod
     def _from_arraylike(cls, data, freq, tz):
-        if not isinstance(data, np.ndarray):
+        if not isinstance(data, (np.ndarray, Index)):
             if np.isscalar(data) or isinstance(data, Period):
                 raise ValueError('PeriodIndex() must be called with a '
                                  'collection of some kind, %s was passed'
@@ -800,6 +800,7 @@ class PeriodIndex(Int64Index):
     def map(self, f):
         try:
             result = f(self)
+            # TODO: This is probably wrong! (likely should just be ndarray)
             if not isinstance(result, (np.ndarray, Index)):
                 raise TypeError
             return result
@@ -1265,13 +1266,13 @@ def _range_from_fields(year=None, month=None, quarter=None, day=None,
 def _make_field_arrays(*fields):
     length = None
     for x in fields:
-        if isinstance(x, (list, np.ndarray)):
+        if isinstance(x, (list, np.ndarray, Index)):
             if length is not None and len(x) != length:
                 raise ValueError('Mismatched Period array lengths')
             elif length is None:
                 length = len(x)
 
-    arrays = [np.asarray(x) if isinstance(x, (np.ndarray, list))
+    arrays = [np.asarray(x) if isinstance(x, (np.ndarray, Index, list))
               else np.repeat(x, length) for x in fields]
 
     return arrays
