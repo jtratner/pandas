@@ -1785,12 +1785,12 @@ class Int64Index(Index):
     An Index instance can **only** contain hashable objects
     """
 
-    _groupby = _algos.groupby_int64
-    _arrmap = _algos.arrmap_int64
-    _left_indexer_unique = _algos.left_join_indexer_unique_int64
-    _left_indexer = _algos.left_join_indexer_int64
-    _inner_indexer = _algos.inner_join_indexer_int64
-    _outer_indexer = _algos.outer_join_indexer_int64
+    _groupby = _wrap_cython_index_method(_algos.groupby_int64)
+    _arrmap = _wrap_cython_index_method(_algos.arrmap_int64)
+    _left_indexer_unique = _wrap_cython_index_method(_algos.left_join_indexer_unique_int64)
+    _left_indexer = _wrap_cython_index_method(_algos.left_join_indexer_int64)
+    _inner_indexer = _wrap_cython_index_method(_algos.inner_join_indexer_int64)
+    _outer_indexer = _wrap_cython_index_method(_algos.outer_join_indexer_int64)
 
     _engine_type = _index.Int64Engine
 
