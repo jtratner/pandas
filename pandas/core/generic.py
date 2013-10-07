@@ -2602,7 +2602,7 @@ class NDFrame(PandasObject):
 
                 other = np.array(other)
 
-        if isinstance(other, np.ndarray):
+        if isinstance(other, (np.ndarray, Index)):
 
             if other.shape != self.shape:
 
