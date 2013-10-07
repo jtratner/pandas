@@ -215,7 +215,7 @@ class DataFrame(NDFrame):
                 mgr = self._init_ndarray(data, index, columns, dtype=dtype,
                                          copy=copy)
 
-        elif isinstance(data, (np.ndarray, Series)):
+        elif isinstance(data, (np.ndarray, Series, Index)):
             if data.dtype.names:
                 data_columns = list(data.dtype.names)
                 data = dict((k, data[k]) for k in data_columns)
@@ -595,6 +595,7 @@ class DataFrame(NDFrame):
                                      columns=other.columns)
         elif isinstance(other, Series):
             return Series(np.dot(lvals, rvals), index=left.index)
+        # not letting this be Index?
         elif isinstance(rvals, np.ndarray):
             result = np.dot(lvals, rvals)
             if result.ndim == 2:
@@ -753,7 +754,7 @@ class DataFrame(NDFrame):
 
                 arrays, arr_columns = _reorder_arrays(arrays, arr_columns, columns)
 
-        elif isinstance(data, (np.ndarray, DataFrame)):
+        elif isinstance(data, (np.ndarray, DataFrame, Index)):
             arrays, columns = _to_arrays(data, columns)
             if columns is not None:
                 columns = _ensure_index(columns)
@@ -1559,7 +1560,7 @@ class DataFrame(NDFrame):
         if indexer is not None:
             return self._getitem_slice(indexer)
 
-        if isinstance(key, (Series, np.ndarray, list)):
+        if isinstance(key, (Series, np.ndarray, list, Index)):
             # either boolean or fancy integer index
             return self._getitem_array(key)
         elif isinstance(key, DataFrame):
@@ -1610,7 +1611,7 @@ class DataFrame(NDFrame):
 
     def _getitem_multilevel(self, key):
         loc = self.columns.get_loc(key)
-        if isinstance(loc, (slice, Series, np.ndarray)):
+        if isinstance(loc, (slice, Series, np.ndarray, Index)):
             new_columns = self.columns[loc]
             result_columns = _maybe_droplevels(new_columns, key)
             if self._is_mixed_type:
@@ -1785,7 +1786,7 @@ class DataFrame(NDFrame):
         if indexer is not None:
             return self._setitem_slice(indexer, value)
 
-        if isinstance(key, (Series, np.ndarray, list)):
+        if isinstance(key, (Series, np.ndarray, list, Index)):
             self._setitem_array(key, value)
         elif isinstance(key, DataFrame):
             self._setitem_frame(key, value)
@@ -1882,7 +1883,7 @@ class DataFrame(NDFrame):
                     raise ValueError('Length of values does not match '
                                      'length of index')
 
-                if not isinstance(value, np.ndarray):
+                if not isinstance(value, (np.ndarray, Index)):
                     if isinstance(value, list) and len(value) > 0:
                         value = com._possibly_convert_platform(value)
                     else:
@@ -2042,7 +2043,7 @@ class DataFrame(NDFrame):
         else:
             loc = self.index.get_loc(key)
 
-            if isinstance(loc, np.ndarray):
+            if isinstance(loc, (np.ndarray, Index)):
                 if loc.dtype == np.bool_:
                     inds, = loc.nonzero()
                     return self.take(inds, axis=axis, convert=False)
@@ -2266,7 +2267,7 @@ class DataFrame(NDFrame):
             if isinstance(col, Series):
                 level = col.values
                 names.append(col.name)
-            elif isinstance(col, (list, np.ndarray)):
+            elif isinstance(col, (list, np.ndarray, Index)):
                 level = col
                 names.append(None)
             else:
@@ -4320,7 +4321,7 @@ def group_agg(values, bounds, f):
         result = np.empty((len(bounds), K), dtype=float)
 
     testagg = f(values[:min(1, len(values))])
-    if isinstance(testagg, np.ndarray) and testagg.ndim == 2:
+    if isinstance(testagg, (np.ndarray, Index)) and testagg.ndim == 2:
         raise AssertionError('Function must reduce')
 
     for i, left_bound in enumerate(bounds):
@@ -4438,7 +4439,7 @@ def extract_index(data):
 
 
 def _prep_ndarray(values, copy=True):
-    if not isinstance(values, np.ndarray):
+    if not isinstance(values, (np.ndarray, Index)):
         if len(values) == 0:
             return np.empty((0, 0), dtype=object)
 
@@ -4485,7 +4486,7 @@ def _to_arrays(data, columns, coerce_float=False, dtype=None):
         return arrays, columns
 
     if not len(data):
-        if isinstance(data, np.ndarray):
+        if isinstance(data, (np.ndarray, Index)):
             columns = data.dtype.names
             if columns is not None:
                 return [[]] * len(columns), columns
@@ -4501,7 +4502,7 @@ def _to_arrays(data, columns, coerce_float=False, dtype=None):
         return _list_of_series_to_arrays(data, columns,
                                          coerce_float=coerce_float,
                                          dtype=dtype)
-    elif (isinstance(data, (np.ndarray, Series))
+    elif (isinstance(data, (np.ndarray, Series, Index))
           and data.dtype.names is not None):
 
         columns = list(data.dtype.names)
