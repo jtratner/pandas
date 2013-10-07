@@ -661,6 +661,8 @@ class DatetimeIndex(Int64Index):
 
     def groupby(self, f):
         objs = self.asobject
+        f = com._values_from_object(f, index_only=True)
+        objs = com._values_from_object(objs, index_only=True)
         return _algos.groupby_object(objs, f)
 
     def summary(self, name=None):
@@ -1326,7 +1328,7 @@ class DatetimeIndex(Int64Index):
 
     def __getitem__(self, key):
         """Override numpy.ndarray's __getitem__ method to work as desired"""
-        arr_idx = self.view(np.ndarray)
+        arr_idx = self._data
         if np.isscalar(key):
             val = arr_idx[key]
             return Timestamp(val, offset=self.offset, tz=self.tz)

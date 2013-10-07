@@ -118,10 +118,12 @@ def _isnull_new(obj):
     # TODO: Decide where to get index
     if lib.isscalar(obj):
         return lib.checknull(obj)
-    # hack (for now) because MI registers as ndarray
     elif isinstance(obj, pd.MultiIndex):
         raise NotImplementedError("isnull is not defined for MultiIndex")
-    if isinstance(obj, (ABCSeries, np.ndarray, pd.Index)):
+    if isinstance(obj, pd.Index):
+        obj = _values_from_object(obj)
+
+    if isinstance(obj, (ABCSeries, np.ndarray)):
         return _isnull_ndarraylike(obj)
     elif isinstance(obj, ABCGeneric):
         return obj.apply(isnull)
@@ -147,7 +149,10 @@ def _isnull_old(obj):
         return lib.checknull_old(obj)
     elif isinstance(obj, pd.MultiIndex):
         raise NotImplementedError("isnull is not defined for MultiIndex")
-    if isinstance(obj, (ABCSeries, np.ndarray, pd.Index)):
+    elif isinstance(obj, pd.Index):
+        obj = _values_from_object(obj)
+
+    if isinstance(obj, (ABCSeries, np.ndarray)):
         return _isnull_ndarraylike_old(obj)
     elif isinstance(obj, ABCGeneric):
         return obj.apply(_isnull_old)
@@ -1461,8 +1466,9 @@ def _maybe_box(indexer, values, obj, key):
     # return the value
     return values
 
-
-def _values_from_object(o):
+# index_only keyword arg placeholder for places where I only put this in to
+# grab Index
+def _values_from_object(o, index_only=False):
     """ return my values or the object if we are say an ndarray """
     f = getattr(o, 'get_values', None)
     if f is not None:

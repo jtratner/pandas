@@ -102,6 +102,8 @@ def _wrap_cython_index_method(method, reconstruct=True):
         if reconstruct:
             result = self._reconstruct(result)
         return result
+    # can't really use this because Cython methods don't take values correctly
+    wrapper = method
     return wrapper
 
 class Index(PandasObject):
@@ -152,6 +154,7 @@ class Index(PandasObject):
 
     dtype = _delegate_to_ndarray_property('dtype')
     __len__ = _delegate_to_ndarray_property('__len__')
+    shape = _delegate_to_ndarray_property('shape')
     searchsorted = _delegate_to_ndarray_method('searchsorted')
 
     # like ``__array_finalize__`` but in reverse (obj is data for new index)
@@ -1093,7 +1096,7 @@ class Index(PandasObject):
 
         if self.is_monotonic and other.is_monotonic:
             try:
-                result = self._inner_indexer(self, other.values)[0]
+                result = self._inner_indexer(self.values, other.values)[0]
                 return self._wrap_union_result(other, result)
             except TypeError:
                 pass
@@ -1301,9 +1304,12 @@ class Index(PandasObject):
         return self, other
 
     def groupby(self, to_groupby):
+        print('Index.groupby')
+        to_groupby = com._values_from_object(to_groupby)
         return self._groupby(self.values, to_groupby)
 
     def map(self, mapper):
+        mapper = com._values_from_object(mapper)
         return self._arrmap(self.values, mapper)
 
     def isin(self, values):
@@ -1321,7 +1327,7 @@ class Index(PandasObject):
         """
         value_set = set(values)
         # TODO: Probably have asobject to return ndarray
-        return lib.ismember(self._array_values(), value_set)
+        return lib.ismember(self.__array__(), value_set)
 
     def _array_values(self):
         return self._values
@@ -1592,7 +1598,7 @@ class Index(PandasObject):
             if how == 'left':
                 join_index, lidx, ridx = self._left_indexer(sv, ov)
             elif how == 'right':
-                join_index, ridx, lidx = self._left_indexer(other, self)
+                join_index, ridx, lidx = self._left_indexer(ov, sv)
             elif how == 'inner':
                 join_index, lidx, ridx = self._inner_indexer(sv, ov)
             elif how == 'outer':
@@ -1996,6 +2002,10 @@ class MultiIndex(Index):
     names : optional sequence of objects
         Names for each of the index levels.
     """
+    @property
+    def not_implemented_property(self):
+        raise NotImplementedError("Property makes no sense for MI")
+    shape = size = not_implemented_property
     # initialize to zero-length tuples to make everything work
     _names = FrozenList()
     _levels = FrozenList()
