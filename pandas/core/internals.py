@@ -565,9 +565,9 @@ class Block(PandasObject):
 
         # length checking
         # boolean with truth values == len of the value is ok too
-        if isinstance(indexer, (np.ndarray, list)):
+        if isinstance(indexer, (np.ndarray, list, Index)):
             if is_list_like(value) and len(indexer) != len(value):
-                if not (isinstance(indexer, np.ndarray) and indexer.dtype == np.bool_ and len(indexer[indexer]) == len(value)):
+                if not (isinstance(indexer, (np.ndarray, Index)) and indexer.dtype == np.bool_ and len(indexer[indexer]) == len(value)):
                     raise ValueError("cannot set using a list-like indexer with a different length than the value")
 
         # slice
@@ -639,7 +639,7 @@ class Block(PandasObject):
             new = self._try_cast(new)
 
             # pseudo-broadcast
-            if isinstance(new,np.ndarray) and new.ndim == self.ndim-1:
+            if isinstance(new, (np.ndarray, Index)) and new.ndim == self.ndim-1:
                 new = np.repeat(new,self.shape[-1]).reshape(self.shape)
 
             np.putmask(new_values, mask, new)
@@ -932,17 +932,15 @@ class Block(PandasObject):
             result = handle_error()
 
         # technically a broadcast error in numpy can 'work' by returning a boolean False
-        if not isinstance(result, np.ndarray):
-            if not isinstance(result, np.ndarray):
+        if not isinstance(result, (np.ndarray, Index)):
+            # differentiate between an invalid ndarray-ndarray comparsion and
+            # an invalid type comparison
+            if isinstance(values, np.ndarray) and is_list_like(other):
+                raise ValueError('Invalid broadcasting comparison [%s] with block values'
+                                    % repr(other))
 
-                # differentiate between an invalid ndarray-ndarray comparsion and
-                # an invalid type comparison
-                if isinstance(values, np.ndarray) and is_list_like(other):
-                    raise ValueError('Invalid broadcasting comparison [%s] with block values'
-                                     % repr(other))
-
-                raise TypeError('Could not compare [%s] with block values'
-                                % repr(other))
+            raise TypeError('Could not compare [%s] with block values'
+                            % repr(other))
 
         # transpose if needed
         result = transf(result)
@@ -1032,7 +1030,7 @@ class Block(PandasObject):
         result = func(cond, values, other)
         if self._can_hold_na or self.ndim == 1:
 
-            if not isinstance(result, np.ndarray):
+            if not isinstance(result, (np.ndarray, Index)):
                 raise TypeError('Could not compare [%s] with block values'
                                 % repr(other))
 
@@ -1180,7 +1178,7 @@ class TimeDeltaBlock(IntBlock):
 
     def _try_coerce_result(self, result):
         """ reverse of try_coerce_args / try_operate """
-        if isinstance(result, np.ndarray):
+        if isinstance(result, (np.ndarray, Index)):
             if result.dtype.kind in ['i','f','O']:
                 result = result.astype('m8[ns]')
         elif isinstance(result, np.integer):
@@ -1446,7 +1444,7 @@ class DatetimeBlock(Block):
 
     def _try_coerce_result(self, result):
         """ reverse of try_coerce_args """
-        if isinstance(result, np.ndarray):
+        if isinstance(result, (np.ndarray, Index)):
             if result.dtype == 'i8':
                 result = tslib.array_to_datetime(
                     result.astype(object).ravel()).reshape(result.shape)
@@ -2523,7 +2521,7 @@ class BlockManager(PandasObject):
         new_axes = list(self.axes)
 
         # could be an array indexer!
-        if isinstance(loc, (slice, np.ndarray)):
+        if isinstance(loc, (slice, (np.ndarray, Index))):
             new_axes[axis] = new_axes[axis][loc]
         else:
             new_axes.pop(axis)
@@ -2822,7 +2820,7 @@ class BlockManager(PandasObject):
         # possibily convert to an indexer
         loc = _possibly_convert_to_indexer(loc)
 
-        if isinstance(loc, (list, tuple, np.ndarray)):
+        if isinstance(loc, (list, tuple, np.ndarray, Index)):
             for l in loc:
                 for i, b in enumerate(self.blocks):
                     if item in b.items:
