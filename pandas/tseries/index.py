@@ -51,9 +51,9 @@ def _join_i8_wrapper(joinf, with_indexers=True):
     @staticmethod
     def wrapper(left, right):
         if isinstance(left, (np.ndarray, Index)):
-            left = left.view('i8', type=np.ndarray, Index)
+            left = left.view('i8', type=np.ndarray)
         if isinstance(right, (np.ndarray, Index)):
-            right = right.view('i8', type=np.ndarray, Index)
+            right = right.view('i8', type=np.ndarray)
         results = joinf(left, right)
         if with_indexers:
             join_index, left_indexer, right_indexer = results

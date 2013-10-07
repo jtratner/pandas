@@ -1,7 +1,7 @@
 # pylint: disable=E1103
 
 from pandas import Series, DataFrame
-from pandas.core.index import MultiIndex
+from pandas.core.index import MultiIndex, Index
 from pandas.tools.merge import concat
 from pandas.tools.util import cartesian_product
 from pandas.compat import range, lrange, zip

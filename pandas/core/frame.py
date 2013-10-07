@@ -3307,7 +3307,7 @@ class DataFrame(NDFrame):
                     # How to determine this better?
                     is_reduction = False
                     try:
-                        is_reduction = not isinstance(f(_EMPTY_SERIES), Series)
+                        is_reduction = not isinstance(f(Series([])), Series)
                     except Exception:
                         pass
 
@@ -4296,7 +4296,8 @@ DataFrame._setup_axes(
     ['index', 'columns'], info_axis=1, stat_axis=0, axes_are_reversed=True)
 DataFrame._add_numeric_operations()
 
-_EMPTY_SERIES = Series([])
+# TODO: Fix this up - ends up with circular import otherwise
+# _EMPTY_SERIES = Series([])
 
 
 def group_agg(values, bounds, f):

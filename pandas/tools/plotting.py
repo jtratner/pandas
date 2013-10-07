@@ -10,7 +10,7 @@ import numpy as np
 
 from pandas.util.decorators import cache_readonly
 import pandas.core.common as com
-from pandas.core.index import MultiIndex
+from pandas.core.index import MultiIndex, Index
 from pandas.core.series import Series, remove_na
 from pandas.tseries.index import DatetimeIndex
 from pandas.tseries.period import PeriodIndex, Period

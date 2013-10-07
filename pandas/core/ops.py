@@ -724,7 +724,7 @@ def _arith_method_FRAME(op, name, str_rep=None, default_axis='columns', fill_zer
                 # casted = self._constructor_sliced(other, index=self.columns)
                 casted = pd.Series(other, index=self.columns)
             return self._combine_series(casted, na_op, fill_value, axis, level)
-        elif isinstance(other, np.ndarray, pd.Index))):
+        elif isinstance(other, (np.ndarray, pd.Index)):
             if other.ndim == 1:
                 if axis is not None and self._get_axis_name(axis) == 'index':
                     # casted = self._constructor_sliced(other, index=self.index)
@@ -794,7 +794,7 @@ def _flex_comp_method_FRAME(op, name, str_rep=None, default_axis='columns',
 
             return self._combine_series(casted, na_op, None, axis, level)
 
-        elif isinstance(other, np.ndarray, pd.Index))):
+        elif isinstance(other, (np.ndarray, pd.Index)):
             if other.ndim == 1:
                 if axis is not None and self._get_axis_name(axis) == 'index':
                     casted = pd.Series(other, index=self.index)
@@ -889,7 +889,7 @@ def _comp_method_PANEL(op, name, str_rep=None, masker=False):
         except TypeError:
             xrav = x.ravel()
             result = np.empty(x.size, dtype=bool)
-            if isinstance(y, np.ndarray, pd.Index))):
+            if isinstance(y, (np.ndarray, pd.Index)):
                 yrav = y.ravel()
                 mask = notnull(xrav) & notnull(yrav)
                 result[mask] = op(np.array(list(xrav[mask])),

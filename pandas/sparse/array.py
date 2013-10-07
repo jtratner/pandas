@@ -14,6 +14,7 @@ from pandas import compat, lib
 from pandas.compat import range
 
 from pandas._sparse import BlockIndex, IntIndex
+from pandas.core.index import Index
 import pandas._sparse as splib
 import pandas.index as _index
 import pandas.core.ops as ops
