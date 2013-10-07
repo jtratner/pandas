@@ -307,8 +307,8 @@ class _MergeOperation(object):
         left_drop = []
         left, right = self.left, self.right
 
-        is_lkey = lambda x: isinstance(x, (np.ndarray, ABCSeries)) and len(x) == len(left)
-        is_rkey = lambda x: isinstance(x, (np.ndarray, ABCSeries)) and len(x) == len(right)
+        is_lkey = lambda x: isinstance(x, (np.ndarray, Index, ABCSeries)) and len(x) == len(left)
+        is_rkey = lambda x: isinstance(x, (np.ndarray, Index, ABCSeries)) and len(x) == len(right)
 
         # ugh, spaghetti re #733
         if _any(self.left_on) and _any(self.right_on):
@@ -621,7 +621,7 @@ def _factorize_keys(lk, rk, sort=True):
 
 
 def _sort_labels(uniques, left, right):
-    if not isinstance(uniques, np.ndarray):
+    if not isinstance(uniques, (np.ndarray, Index)):
         # tuplesafe
         uniques = Index(uniques).values
 
