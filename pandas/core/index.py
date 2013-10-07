@@ -218,7 +218,7 @@ class Index(PandasObject):
         #       (easiest is to convert into else statements + and then look for
         #       obj not None)
         from pandas.tseries.period import PeriodIndex
-        if isinstance(data, np.ndarray):
+        if isinstance(data, (np.ndarray, Index)):
             if issubclass(data.dtype.type, np.datetime64):
                 from pandas.tseries.index import DatetimeIndex
                 result = DatetimeIndex(data, copy=copy, name=name, **kwargs)
@@ -357,7 +357,7 @@ class Index(PandasObject):
         """coerces data to ndarray, raises on scalar data. Converts other
         iterables to list first and then to array. Does not touch ndarrays."""
 
-        if not isinstance(data, np.ndarray):
+        if not isinstance(data, (np.ndarray, Index)):
             if np.isscalar(data):
                 cls._scalar_data_error(data)
 
@@ -1674,7 +1674,7 @@ class Index(PandasObject):
 
                     # get_loc will return a boolean array for non_uniques
                     # if we are not monotonic
-                    if isinstance(start_slice, np.ndarray):
+                    if isinstance(start_slice, (np.ndarray, Index)):
                         raise KeyError("cannot peform a slice operation "
                                        "on a non-unique non-monotonic index")
 
@@ -1696,7 +1696,7 @@ class Index(PandasObject):
                 if not is_unique:
 
                     # get_loc will return a boolean array for non_uniques
-                    if isinstance(end_slice, np.ndarray):
+                    if isinstance(end_slice, (np.ndarray, Index)):
                         raise KeyError("cannot perform a slice operation "
                                        "on a non-unique non-monotonic index")
 
@@ -2570,7 +2570,7 @@ class MultiIndex(Index):
             # I think this is right? Not quite sure...
             raise TypeError('Cannot infer number of levels from empty list')
 
-        if isinstance(tuples, np.ndarray):
+        if isinstance(tuples, (np.ndarray, Index)):
             if isinstance(tuples, Index):
                 tuples = tuples.values
 
@@ -2695,7 +2695,7 @@ class MultiIndex(Index):
             return self._drop_from_level(labels, level)
 
         try:
-            if not isinstance(labels, np.ndarray):
+            if not isinstance(labels, (np.ndarray, Index)):
                 labels = com._index_labels_to_array(labels)
             indexer = self.get_indexer(labels)
             mask = indexer == -1
