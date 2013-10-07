@@ -7,6 +7,7 @@ Offer fast expression evaluation thru numexpr
 """
 
 import numpy as np
+import pandas as pd
 from pandas.core.common import _values_from_object
 
 try:
@@ -76,7 +77,7 @@ def _can_use_numexpr(op, op_str, a, b, dtype_check):
                     if len(s) > 1:
                         return False
                     dtypes |= set(s.index)
-                elif isinstance(o, np.ndarray):
+                elif isinstance(o, (np.ndarray, pd.Index)):
                     dtypes |= set([o.dtype.name])
 
             # allowed are a superset

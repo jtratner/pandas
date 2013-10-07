@@ -13,7 +13,7 @@ import pandas.core.common as com
 
 
 def _align_core_single_unary_op(term):
-    if isinstance(term.value, np.ndarray):
+    if isinstance(term.value, (np.ndarray, pd.Index)):
         typ = partial(np.asanyarray, dtype=term.value.dtype)
     else:
         typ = type(term.value)
@@ -35,7 +35,7 @@ def _zip_axes_from_type(typ, new_axes):
 
 def _maybe_promote_shape(values, naxes):
     # test to see if we have an array else leave since must be a number
-    if not isinstance(values, np.ndarray):
+    if not isinstance(values, (np.ndarray, pd.Index)):
         return values
 
     ndims = values.ndim
