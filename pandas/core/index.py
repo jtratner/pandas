@@ -323,7 +323,7 @@ class Index(PandasObject):
         self._id = _Identity()
 
     def view(self, *args, **kwargs):
-        shallow_copy = not args or kwargs
+        shallow_copy = not (args or kwargs)
         # whew!
         single_arg_view = (args and len(args) == 1
                            and isinstance(args[0], type)
@@ -332,9 +332,7 @@ class Index(PandasObject):
             warn("Using view(Index) on Index objects is deprecated.")
         shallow_copy = shallow_copy or single_arg_view
         if shallow_copy:
-            res = self._shallow_copy()
-            res._id = self._id
-            return res
+            return self._shallow_copy()
         # TODO: Decide if this should be allowed and also whether this should
         #       be values or data...
         return self.values.view(*args, **kwargs)
@@ -376,7 +374,9 @@ class Index(PandasObject):
         return self._reconstruct(result)
 
     def _shallow_copy(self):
-        return self._reconstruct(self._data)
+        res = self._reconstruct(self._data)
+        res._id = self._id
+        return res
 
     def copy(self, names=None, name=None, dtype=None, deep=False):
         """
@@ -2005,9 +2005,11 @@ class MultiIndex(Index):
 
     def _shallow_copy(self):
         # not actually a shallow copy right now :P
-        return type(self)(levels=self.levels, labels=self.labels,
+        res = type(self)(levels=self.levels, labels=self.labels,
                           names=self.names, copy=False,
                           sortorder=self.sortorder, fastpath=True)
+        res._id = self._id
+        return res
 
     def __new__(cls, data=None, levels=None, labels=None, sortorder=None,
                  names=None, copy=False, fastpath=False):
