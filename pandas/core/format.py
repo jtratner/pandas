@@ -61,6 +61,8 @@ docstring_to_string = """
     -------
     formatted : string (or unicode, depending on data and options)"""
 
+_list_ish = lambda x: isinstance(x, (list, tuple, np.ndarray, Index))
+
 class CategoricalFormatter(object):
     def __init__(self, categorical, buf=None, length=True,
                  na_rep='NaN', name=False, footer=True):
@@ -940,7 +942,7 @@ class CSVFormatter(object):
             series[k] = v.values
 
 
-        has_aliases = isinstance(header, (tuple, list, np.ndarray))
+        has_aliases = _list_ish(header)
         if has_aliases or header:
             if index:
                 # should write something for index label
@@ -958,7 +960,7 @@ class CSVFormatter(object):
                                 index_label = ['']
                             else:
                                 index_label = [index_label]
-                    elif not isinstance(index_label, (list, tuple, np.ndarray)):
+                    elif not _list_ish(index_label):
                         # given a string for a DF with Index
                         index_label = [index_label]
 
@@ -1051,7 +1053,7 @@ class CSVFormatter(object):
         header = self.header
         encoded_labels = []
 
-        has_aliases = isinstance(header, (tuple, list, np.ndarray))
+        has_aliases = _list_ish(header)
         if not (has_aliases or self.header):
             return
 
@@ -1071,7 +1073,7 @@ class CSVFormatter(object):
                             index_label = ['']
                         else:
                             index_label = [index_label]
-                elif not isinstance(index_label, (list, tuple, np.ndarray)):
+                elif not _list_ish(index_label):
                     # given a string for a DF with Index
                     index_label = [index_label]
 
@@ -1230,7 +1232,7 @@ class ExcelFormatter(object):
         return val
 
     def _format_header_mi(self):
-        has_aliases = isinstance(self.header, (tuple, list, np.ndarray))
+        has_aliases = _list_ish(self.header)
         if not(has_aliases or self.header):
             return
 
@@ -1261,7 +1263,7 @@ class ExcelFormatter(object):
         self.rowcounter = lnum
 
     def _format_header_regular(self):
-        has_aliases = isinstance(self.header, (tuple, list, np.ndarray))
+        has_aliases = _list_ish(self.header)
         if has_aliases or self.header:
             coloffset = 0
             if self.index:
@@ -1305,7 +1307,7 @@ class ExcelFormatter(object):
             return self._format_regular_rows()
 
     def _format_regular_rows(self):
-        has_aliases = isinstance(self.header, (tuple, list, np.ndarray))
+        has_aliases = _list_ish(self.header)
         if has_aliases or self.header:
             self.rowcounter += 1
 
@@ -1314,8 +1316,7 @@ class ExcelFormatter(object):
         if self.index:
             # chek aliases
             # if list only take first as this is not a MultiIndex
-            if self.index_label and isinstance(self.index_label,
-                                               (list, tuple, np.ndarray)):
+            if self.index_label and _list_ish(self.index_label):
                 index_label = self.index_label[0]
             # if string good to go
             elif self.index_label and isinstance(self.index_label, str):
@@ -1348,7 +1349,7 @@ class ExcelFormatter(object):
                 yield ExcelCell(self.rowcounter + i, colidx + coloffset, val)
 
     def _format_hierarchical_rows(self):
-        has_aliases = isinstance(self.header, (tuple, list, np.ndarray))
+        has_aliases = _list_ish(self.header)
         if has_aliases or self.header:
             self.rowcounter += 1
 
@@ -1357,8 +1358,7 @@ class ExcelFormatter(object):
         if self.index:
             index_labels = self.df.index.names
             # check for aliases
-            if self.index_label and isinstance(self.index_label,
-                                               (list, tuple, np.ndarray)):
+            if self.index_label and _list_ish(self.index_label):
                 index_labels = self.index_label
 
             # if index labels are not empty go ahead and dump
