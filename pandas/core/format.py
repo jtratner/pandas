@@ -90,7 +90,9 @@ class CategoricalFormatter(object):
         levheader = 'Levels (%d): ' % len(self.categorical.levels)
 
         #TODO: should max_line_width respect a setting?
-        levstring = np.array_repr(self.categorical.levels, max_line_width=60)
+        # TODO: Why should this require __array_interface__ to work? Not clear
+        # why it doesn't look to __array__ first...
+        levstring = np.array_repr(self.categorical.levels.__array__(), max_line_width=60)
         indent = ' ' * (levstring.find('[') + len(levheader) + 1)
         lines = levstring.split('\n')
         levstring = '\n'.join([lines[0]] +
