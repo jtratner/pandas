@@ -70,6 +70,8 @@ _SIZE_CUTOFF = 1000000
 cdef class IndexEngine:
 
     cdef readonly:
+        # method that gets values suitable for use by the engine from the Index
+        # it is driving (currently defaults to lambda: self.values)
         object vgetter
         HashTable mapping
         bint over_size_threshold
@@ -79,6 +81,14 @@ cdef class IndexEngine:
         bint initialized, monotonic_check, unique_check
 
     def __init__(self, vgetter, n):
+        """
+        Arguments
+        ---------
+        vgetter: callable
+            function that gets values from the engine's Index
+        n : int
+            length of the index
+        """
         self.vgetter = vgetter
 
         self.over_size_threshold = n >= _SIZE_CUTOFF
@@ -226,7 +236,7 @@ cdef class IndexEngine:
         except TypeError:
             self.monotonic = 0
         self.monotonic_check = 1
-
+    # TODO: Shouldn't this be inline?
     cdef _get_index_values(self):
         return self.vgetter()
 
@@ -446,6 +456,7 @@ _backfill_functions = {
 }
 
 cdef class ObjectEngine(IndexEngine):
+    """Engine that makes no assumptions about underlying dtype"""
 
     cdef _make_hash_table(self, n):
         return _hash.PyObjectHashTable(n)
