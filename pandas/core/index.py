@@ -120,8 +120,11 @@ def _get_names(name=None, names=None, **kwargs):
 
 
 class IndexMeta(type):
-    """Index metaclass that overrides __call__ to allow customization of
-    arguments to subclass"""
+    """Index metaclass - handles type inference on call to Index(...). Calls to
+    a specific subclass of Index go through without interference (so Index
+    subclasses only need care about validating data to their own
+    circumstances...*not*, in general, necessary for them to do any inference
+    (and therefore they need not define __new__)"""
     # TODO: Probably need to have another metaclass for DatetimeIndex
     # Defining a metaclass here because it simplifies the Index constructor
     # *considerably*. Plus, this has the fantastic bonus of eliminating nearly
@@ -2099,32 +2102,26 @@ class MultiIndex(Index):
         res._id = self._id
         return res
 
-    def __new__(cls, data=None, levels=None, labels=None, sortorder=None,
+    # HEYO! Don't have to have __new__ when we use a metaclass -- ooohhh yeah!
+    def __init__(self, data=None, levels=None, labels=None, sortorder=None,
                  names=None, copy=False, fastpath=False):
+        # TODO: Remove this if necessary
         assert data is None or len(data) == 0, "Undefined behavior when data is not none"
-        self = super(Index, cls).__new__(cls)
         self._data = np.empty(0, dtype=object)
-        if fastpath:
-            self._set_levels(levels)
-            self._set_labels(labels)
-            self._set_names(names)
-            self.sortorder = sortorder
-            return self
-
-        if len(levels) != len(labels):
-            raise ValueError(
-                'Length of levels and labels must be the same')
-        if len(levels) == 0:
-            raise TypeError('Must pass non-zero number of levels/labels')
-        if len(levels) == 1:
-            if names:
-                name = names[0]
-            else:
-                name = None
-
-            return Index(levels[0], name=name, copy=True).take(labels[0])
-
         self._reset_identity()
+
+        # TODO: Once there's  an actual fastpath to work with (i.e., prepped
+        # data), should change this.
+        if not fastpath:
+            if len(levels) != len(labels):
+                raise ValueError(
+                    'Length of levels and labels must be the same')
+            if len(levels) == 0:
+                raise TypeError('Must pass non-zero number of levels/labels')
+            if len(levels) == 1:
+                # What is this doing exactly?
+                return Index(levels[0], names=names, copy=True).take(labels[0])
+
         self._set_levels(levels, copy=copy)
         self._set_labels(labels, copy=copy)
 
@@ -2134,12 +2131,8 @@ class MultiIndex(Index):
         if sortorder is not None:
             self.sortorder = int(sortorder)
         else:
+            # probably unnecessary
             self.sortorder = sortorder
-
-        return self
-
-    def __init__(self, *args, **kwargs):
-        self._reset_identity()
 
     def _get_levels(self):
         return self._levels
