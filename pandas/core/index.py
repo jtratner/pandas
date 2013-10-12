@@ -99,13 +99,15 @@ def _wrap_cython_index_method(method, reconstruct=True):
     return wrapper
 
 
-def _get_names(name=None, names=None, **kwargs):
-    """Given name and names, gives you back a list-like names for simplicity on
-    all the other methods. Should be called in __init__, because it's annoying
-    to do anywhere else."""
+def _combine_names_or_fail(name=None, names=None, **kwargs):
+    """Given name and names, selects the right one and always returns a
+    list-like. If both name and names are passed (or names is not None and is
+    not list like, raises TypeError) other kwargs are ignored."""
     if name is not None and names is not None:
         raise TypeError("Can only specify one of 'name' or 'names'")
-    if name:
+    elif names is not None and not com.is_list_like(names):
+        raise TypeError("'names' must be list-like")
+    if name is not None:
         names = [name]
     return names
 
@@ -118,9 +120,10 @@ class IndexMeta(type):
     circumstances...*not*, in general, necessary for them to do any inference
     (and therefore they need not define __new__).
 
-    __call__ does one other thing: it handles ambiguities with name vs. names,
-    always passing 'names' to IndexMeta types, so IndexMeta types can safely
-    ignore the names kwarg."""
+    Index subclasses need to be aware that they can be passed either names
+    and/or name and should be prepared for both.
+    """
+
     # TODO: Probably need to have another metaclass for DatetimeIndex
     # Defining a metaclass here because it simplifies the Index constructor
     # *considerably*. Plus, this has the fantastic bonus of eliminating nearly
@@ -130,10 +133,7 @@ class IndexMeta(type):
     def __call__(cls, data=None, *args, **kwargs):
         # TODO: Pass fastpaths where possible... (i.e., self._data = data,
         # self.names = names)
-        dtype = kwargs.get('dtype')
-        copy = kwargs.get('copy')
-        kwargs['names'] = names = _get_names(**kwargs)
-        kwargs.pop('name', None)
+
         # this too slow? Probably fine right?
         if 'levels' in kwargs or 'labels' in kwargs:
             cls = MultiIndex
@@ -146,6 +146,11 @@ class IndexMeta(type):
             if isinstance(obj, cls):
                 obj.__init__(data, *args, **kwargs)
             return obj
+
+        dtype = kwargs.get('dtype')
+        copy = kwargs.get('copy')
+        kwargs['names'] = names = _combine_names_or_fail(**kwargs)
+        kwargs.pop('name', None)
         # TODO: Decrease the amount of returns here by clarifying if statements
         #       (easiest is to convert into else statements + and then look for
         #       obj not None)
@@ -1815,14 +1820,16 @@ class RangeIndex(Index):
     # also doesn't handle reversed order
 
     # Moving data from first arg lets you have a much cleaner setup here...
-    def __init__(self, start=None, stop=None, names=None, data=None):
+    def __init__(self, start=None, stop=None, names=None, data=None, name=None):
         # well, you could actually be passing pre-computed start/stop/etc, but
         # whatever.
         assert data is None, ("No idea what data you could be passing to"
                               " RangeIndex")
         self.start = start
         self.stop = stop
-        self.names = names
+        names = _combine_names_or_fail(name=name, names=names)
+        if names:
+            self.set_names(names, inplace=True)
 
     @property
     def as_int64index(self):
@@ -1871,23 +1878,28 @@ class ObjectIndex(Index):
     """Generic Index type. NOT public."""
     def __init__(self, data, name=None, names=None, dtype=None, copy=False,
                  fastpath=False):
+        names = _combine_names_or_fail(name, names)
+        if names:
+            self.set_names(names, inplace=True)
+
         self._reset_identity()
+
         if np.isscalar(data):
             self._scalar_data_error(data)
         if not fastpath:
             data = np.asarray(data, dtype=dtype)
+
         # these are assertions just to see how things are shaping up
-        assert isinstance(data, np.ndarray), ("ObjectIndex constructor can"
-                                              " only be called with ndarray")
+        assert isinstance(data, np.ndarray), ("Can't pass fastpath=True and "
+                                              " no ndarray to Object Index")
+        # This assertion is definitely not necessary
         assert dtype is None or dtype is _o_dtype or dtype is object, (
             "ObjectIndex constructor must be called with object dtype only")
+
         if copy:
             data = data.copy()
-        # TypeErrors if not matching
-        names = _get_names(name, names)
+        # TypeErrors if not matching?
         self._data = data
-        if names:
-            self.set_names(names, inplace=True)
 
     def equals(self, other):
         """
