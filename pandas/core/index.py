@@ -1943,7 +1943,8 @@ class Int64Index(Index):
             return
         if fastpath:
             self._data = data
-            self.name = name
+            if names:
+                self.names = names
             return
 
         # isscalar, generators handled in coerce_to_ndarray
@@ -1966,7 +1967,8 @@ class Int64Index(Index):
                     raise TypeError('Unsafe NumPy casting to integer, you must'
                                     'explicitly cast')
         self._data = subarr
-        self.name = name
+        if names:
+            self.names = names
 
     @property
     def inferred_type(self):
