@@ -106,6 +106,148 @@ def _wrap_cython_index_method(method, reconstruct=True):
     wrapper = method
     return wrapper
 
+
+def _get_names(name=None, names=None, **kwargs):
+    """Given name and names, gives you back a list-like names for simplicity on
+    all the other methods. Should be called in __init__, because it's annoying
+    to do anywhere else."""
+    if name is not None and names is not None:
+        raise TypeError("Can only specify one of 'name' or 'names'")
+    if name:
+        names = [name]
+    return names
+
+
+
+class IndexMeta(type):
+    """Index metaclass that overrides __call__ to allow customization of
+    arguments to subclass"""
+    # TODO: Probably need to have another metaclass for DatetimeIndex
+    # Defining a metaclass here because it simplifies the Index constructor
+    # *considerably*. Plus, this has the fantastic bonus of eliminating nearly
+    # all recursion in the constructor.
+    # TODO: Make Index(arrays) or Index(tuples) return MI (maybe allow
+    # ObjectIndex to handle??)
+    def __call__(cls, data=None, *args, **kwargs):
+        # TODO: Pass fastpaths where possible... (i.e., self._data = data,
+        # self.names = names)
+        dtype = kwargs.get('dtype')
+        copy = kwargs.get('copy')
+        kwargs['names'] = names = _get_names(**kwargs)
+        # this too slow? Probably fine right?
+        if 'levels' in kwargs or 'labels' in kwargs:
+            cls = MultiIndex
+        # short-circuit on fastpath or explicit call of different type
+        # ONLY get type inference if you call with Index()
+        if cls != Index or kwargs.get('fastpath', None):
+            if cls is Index:
+                cls = ObjectIndex
+            obj = cls.__new__(cls, data, *args, **kwargs)
+            if isinstance(obj, cls):
+                obj.__init__(data, *args, **kwargs)
+            return obj
+        # TODO: Decrease the amount of returns here by clarifying if statements
+        #       (easiest is to convert into else statements + and then look for
+        #       obj not None)
+
+        # From here on out, we know that we have the exact Index type
+        # Once we assign an Index subclass, we can continue on without issue.
+        subarr = None
+        from pandas.tseries.period import PeriodIndex
+        if isinstance(data, np.ndarray):
+            if issubclass(data.dtype.type, np.datetime64):
+                from pandas.tseries.index import DatetimeIndex
+                kwargs.pop('dtype', None)
+                # will skip this type inference b/c != Index
+                result = DatetimeIndex(data, **kwargs)
+                # if specifically asked for object dtype, go for ObjectIndex.
+                if dtype is not None and dtype == _o_dtype:
+                    # TODO: Make this an ObjectIndex instead.
+                    cls = ObjectIndex
+                    args = []
+                    kwargs = dict(fastpath=True, names=names)
+                    subarr = result.to_pydatetime()
+                else:
+                    return result
+            elif issubclass(data.dtype.type, np.timedelta64):
+                # don't want to pass dtype at this point here...
+                cls = Int64Index
+                args = []
+                subarr = data
+                # fastpath = True??
+                kwargs = dict(names=names, copy=kwargs['copy'])
+
+            elif dtype is not None:
+                try:
+                    subarr = np.array(data, dtype=dtype, copy=copy)
+                except TypeError:
+                    pass
+            elif isinstance(data, PeriodIndex):
+                cls = PeriodIndex
+                subarr = data
+                # args = []
+                kwargs.pop('dtype', None)
+
+            elif issubclass(data.dtype.type, np.integer):
+                cls = Int64Index
+                subarr = data
+                # args = []
+                # TODO: get names here...
+                kwargs = dict(copy=copy, dtype=dtype,
+                              names=names)
+            else:
+                subarr = com._asarray_tuplesafe(data, dtype=object)
+                # _asarray_tuplesafe does not always copy underlying data,
+                # so need to make sure that this happens
+                if copy:
+                    subarr = subarr.copy()
+
+        elif np.isscalar(data):
+            cls._scalar_data_error(data)
+
+        else:
+            # other iterable of some kind
+            subarr = com._asarray_tuplesafe(data, dtype=object)
+
+        # still haven't assigned an Index yet...
+        if cls is Index and dtype is None:
+            assert subarr is not None, ("Logic error - not supposed to be"
+                                        " subarr == None here!")
+            inferred = lib.infer_dtype(subarr)
+            # consider not needing to do this
+            if inferred == 'integer':
+                cls = Int64Index
+                # this can probably be fastpath-ed here.
+                subarr = subarr.astype('i8')
+                kwargs = dict(copy=copy, names=names)
+            elif inferred in ['floating','mixed-integer-float']:
+                cls = Float64Index
+                # again, probably can be fastpath-ed
+                kwargs = dict(copy=copy, names=names)
+            elif inferred != 'string':
+                if (inferred.startswith('datetime') or
+                        tslib.is_timestamp_array(subarr)):
+                    from pandas.tseries.index import DatetimeIndex
+                    # DatetimeIndex has its own new
+                    cls = DatetimeIndex
+                    kwargs.pop('dtype', None)
+                elif inferred == 'period':
+                    cls = PeriodIndex
+                    kwargs.pop('dtype', None)
+                    kwargs.pop('copy', None)
+        if cls is Index:
+            cls = ObjectIndex
+            kwargs.pop('dtype', None)
+            kwargs.update(dict(copy=False, fastpath=True))
+        print args, kwargs
+        obj = cls.__new__(cls, subarr, *args, **kwargs)
+        # replicate Python behavior (call __init__ if __new__ returns instance)
+        if isinstance(obj, cls):
+            obj.__init__(subarr, *args, **kwargs)
+        return obj
+
+
+@compat.add_metaclass(IndexMeta)
 class Index(PandasObject):
 
     """
@@ -191,99 +333,6 @@ class Index(PandasObject):
             obj.__init__(*args, **kwargs)
             obj._finished = True
         return obj
-
-
-    # side note, because of ``__new__`` method, can't ever define an
-    # ``__init__`` method on Index (otherwise it'd get called here).
-    def __new__(cls, data, dtype=None, copy=False, name=None, fastpath=False,
-                names=None, **kwargs):
-        if name and names:
-            raise TypeError("Cannot specify name and names!")
-        name = name if names is None else names[0]
-        if cls != Index:
-            kwargs.update({'name': name, 'dtype':dtype, 'copy': copy, 'fastpath': fastpath})
-            return cls._instantiate(cls, data, **kwargs)
-        # TODO: handle when type(cls) != Index [needs to skip inference]
-        # no class inference! - stick with passed class
-        if fastpath:
-            # skip inheritance here, we want to get instance of class to use
-            obj = super(Index, cls).__new__(cls)
-            # allow arbitrary ordering
-            kwargs.update({'name': name, 'dtype':dtype, 'copy': copy, 'fastpath': fastpath})
-            obj._data = data
-            obj.name = name
-            return obj
-
-        # this is what we're going to (eventually) instantiate
-        obj = None
-
-        # TODO: Decrease the amount of returns here by clarifying if statements
-        #       (easiest is to convert into else statements + and then look for
-        #       obj not None)
-        from pandas.tseries.period import PeriodIndex
-        if isinstance(data, (np.ndarray, Index)):
-            if issubclass(data.dtype.type, np.datetime64):
-                from pandas.tseries.index import DatetimeIndex
-                result = DatetimeIndex(data, copy=copy, name=name, **kwargs)
-                if dtype is not None and _o_dtype == dtype:
-                    return Index(result.to_pydatetime(), fastpath=True)
-                else:
-                    return result
-            elif issubclass(data.dtype.type, np.timedelta64):
-                return cls._instantiate(Int64Index, data, copy=copy, name=name)
-
-            if dtype is not None:
-                try:
-                    data = np.array(data, dtype=dtype, copy=copy)
-                except TypeError:
-                    pass
-            elif isinstance(data, PeriodIndex):
-                return cls._instantiate(PeriodIndex, data, copy=copy, name=name, **kwargs)
-
-            if issubclass(data.dtype.type, np.integer):
-                return cls._instantiate(Int64Index, data, copy=copy, dtype=dtype, name=name)
-
-            subarr = com._asarray_tuplesafe(data, dtype=object)
-
-            # _asarray_tuplesafe does not always copy underlying data,
-            # so need to make sure that this happens
-            if copy:
-                subarr = subarr.copy()
-
-        elif np.isscalar(data):
-            cls._scalar_data_error(data)
-
-        else:
-            # other iterable of some kind
-            subarr = com._asarray_tuplesafe(data, dtype=object)
-
-        if dtype is None:
-            inferred = lib.infer_dtype(subarr)
-            # consider not needing to do this
-            if inferred == 'integer':
-                obj = cls._instantiate(Int64Index, subarr.astype('i8'), copy=copy, name=name)
-            elif inferred in ['floating','mixed-integer-float']:
-                obj = cls._instantiate(Float64Index, subarr, copy=copy, name=name)
-            elif inferred != 'string':
-                if (inferred.startswith('datetime') or
-                        tslib.is_timestamp_array(subarr)):
-                    from pandas.tseries.index import DatetimeIndex
-                    # DatetimeIndex has its own new
-                    obj = cls._instantiate(DatetimeIndex, data, copy=copy, name=name, **kwargs)
-                elif inferred == 'period':
-                    obj = cls._instantiate(PeriodIndex, subarr, name=name, **kwargs)
-
-        if obj is not None:
-            return obj
-
-        # try again with the fastpath, since we've prepped everything for
-        # object-ish index now.
-        return Index(subarr, copy=False, name=name, fastpath=True, **kwargs)
-
-    def __init__(self, *args, **kwargs):
-        self._reset_identity()
-        if self._finished:
-            return
 
     def __unicode__(self):
         """
@@ -1768,6 +1817,29 @@ class Index(PandasObject):
             raise ValueError('labels %s not contained in axis' % labels[mask])
         return self.delete(indexer)
 
+# TODO: Move as many methods as possible to ObjectIndex so that Index is a very
+# thin class
+class ObjectIndex(Index):
+    """Generic Index type. NOT public."""
+    def __init__(self, data, name=None, names=None, dtype=None, copy=False,
+                 fastpath=False):
+        self._reset_identity()
+        if np.isscalar(data):
+            self._scalar_data_error(data)
+        if not fastpath:
+            data = np.asarray(data, dtype=dtype)
+        # these are assertions just to see how things are shaping up
+        assert isinstance(data, np.ndarray), ("ObjectIndex constructor can"
+                                              " only be called with ndarray")
+        assert dtype is None or dtype is _o_dtype or dtype is object, (
+            "ObjectIndex constructor must be called with object dtype only")
+        if copy:
+            data = data.copy()
+        # TypeErrors if not matching
+        names = _get_names(name, names)
+        self._data = data
+        if names:
+            self.set_names(names, inplace=True)
 
 class Int64Index(Index):
 
@@ -1894,11 +1966,15 @@ class Float64Index(Index):
 
     def __init__(self, data, dtype=None, copy=False, name=None, names=None, fastpath=False):
         self._reset_identity()
-        if self._finished:
-            return
 
         if fastpath:
-            # already handled
+            # better to do this here so don't have to change Index when engine
+            # can handle this
+            if not data.dtype == np.object_:
+                data = data.astype(object)
+            self._data = data
+            if names:
+                self.name = names[0]
             return
 
         data = self._coerce_to_ndarray(data)
@@ -1930,6 +2006,8 @@ class Float64Index(Index):
         if np.dtype(dtype) != np.object_:
             raise TypeError(
                 "Setting %s dtype to anything other than object is not supported" % self.__class__)
+        # shouldn't this just be Float64Index again? Why bother to pass through
+        # Index?
         return Index(self.values,name=self.name,dtype=object)
 
     def _convert_scalar_indexer(self, key, typ=None):
@@ -3273,7 +3351,8 @@ class MultiIndex(Index):
             return True
 
         if not isinstance(other, MultiIndex):
-            return np.array_equal(self.values, _ensure_index(other))
+            # pretty sure this needs to be other.values
+            return np.array_equal(self.values, _ensure_index(other).values)
 
         if self.nlevels != other.nlevels:
             return False
