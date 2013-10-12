@@ -562,7 +562,10 @@ class PeriodIndex(Int64Index):
     def __new__(cls, data=None, ordinal=None, freq=None, start=None, end=None,
                 periods=None, copy=False, name=None, year=None, month=None,
                 quarter=None, day=None, hour=None, minute=None, second=None,
-                tz=None, fastpath=False):
+                tz=None, fastpath=False, names=None):
+        # Okay because of Index constructor
+        if names:
+            name = names[0]
         # fastpath is basically only with freq, data and name
         if fastpath:
             obj = super(Index, cls).__new__(cls)

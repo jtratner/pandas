@@ -148,12 +148,16 @@ class DatetimeIndex(Int64Index):
     def __new__(cls, data=None,
                 freq=None, start=None, end=None, periods=None,
                 copy=False, name=None, tz=None,
-                verify_integrity=True, normalize=False, **kwds):
+                verify_integrity=True, normalize=False, names=None, **kwds):
 
         dayfirst = kwds.pop('dayfirst', None)
         yearfirst = kwds.pop('yearfirst', None)
         infer_dst = kwds.pop('infer_dst', False)
         warn = False
+        # again, should be fine - might want to check for string-like here (or
+        # actually pass self.names = names, etc.)
+        if names:
+            name = names[0]
         if 'offset' in kwds and kwds['offset']:
             freq = kwds['offset']
             warn = True
