@@ -2108,22 +2108,13 @@ class MultiIndex(Index):
         res._id = self._id
         return res
 
-    # HEYO! Don't have to have __new__ when we use a metaclass -- ooohhh yeah!
-    def __init__(self, data=None, levels=None, labels=None, sortorder=None,
+    def __new__(cls, data=None, levels=None, labels=None, sortorder=None,
                  names=None, copy=False, fastpath=False):
         if levels is None or labels is None:
             raise TypeError("Must pass both levels and labels")
-        # TODO: Remove this if necessary
+        # minimal checking for edge case where single level is passed and needs
+        # to return Index
         assert data is None or len(data) == 0, "Undefined behavior when data is not none"
-        self._data = np.empty(0, dtype=object)
-        if fastpath:
-            self._set_levels(levels)
-            self._set_labels(labels)
-            self._set_names(names)
-            self.sortorder = sortorder
-            return self
-
-
         # TODO: Once there's  an actual fastpath to work with (i.e., prepped
         # data), should change this.
         if not fastpath:
@@ -2134,6 +2125,16 @@ class MultiIndex(Index):
             if len(levels) == 1:
                 # What is this doing exactly?
                 return Index(levels[0], names=names, copy=True).take(labels[0])
+        # will have __init__ called on itself - note that it's not playing
+        # nicely with others here.
+        return super(MultiIndex, cls).__new__(cls)
+
+    def __init__(self, data=None, levels=None, labels=None, sortorder=None,
+                 names=None, copy=False, fastpath=False):
+        # validation of levles and labels happens in __new__
+        self._data = np.empty(0, dtype=object)
+        self._reset_identity()
+
 
         # v3, 0.8.0
         # we've already validated levels and labels, so shortcut here
