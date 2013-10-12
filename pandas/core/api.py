@@ -8,6 +8,9 @@ from pandas.core.common import isnull, notnull
 from pandas.core.categorical import Categorical
 from pandas.core.format import set_eng_float_format
 from pandas.core.index import Index, Int64Index, Float64Index, MultiIndex
+# side note - I would prefer this *not* be part of the public API - maybe need
+# to change its repr to pretend to be Index?
+from pandas.core.index import ObjectIndex
 
 from pandas.core.series import Series, TimeSeries
 from pandas.core.frame import DataFrame
