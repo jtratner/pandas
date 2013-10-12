@@ -244,7 +244,6 @@ class IndexMeta(type):
             cls = ObjectIndex
             kwargs.pop('dtype', None)
             kwargs.update(dict(copy=False, fastpath=True))
-        print args, kwargs
         obj = cls.__new__(cls, subarr, *args, **kwargs)
         # replicate Python behavior (call __init__ if __new__ returns instance)
         if isinstance(obj, cls):
@@ -1328,7 +1327,6 @@ class Index(PandasObject):
         return self, other
 
     def groupby(self, to_groupby):
-        print('Index.groupby')
         to_groupby = com._values_from_object(to_groupby)
         return self._groupby(self.values, to_groupby)
 
