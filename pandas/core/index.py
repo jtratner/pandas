@@ -141,6 +141,7 @@ class IndexMeta(type):
         dtype = kwargs.get('dtype')
         copy = kwargs.get('copy')
         kwargs['names'] = names = _get_names(**kwargs)
+        kwargs.pop('name', None)
         # this too slow? Probably fine right?
         if 'levels' in kwargs or 'labels' in kwargs:
             cls = MultiIndex
