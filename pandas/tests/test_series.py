@@ -4527,8 +4527,8 @@ class TestSeries(unittest.TestCase, CheckNameIntegration):
     def test_reindex(self):
         identity = self.series.reindex(self.series.index)
         # nocopy version necessary
-        self.assert_(np.may_share_memory(self.series.index._values,
-                                         identity.index._values))
+        self.assert_(np.may_share_memory(self.series.index._values_no_copy,
+                                         identity.index._values_no_copy))
         self.assert_(identity.index.is_(self.series.index))
 
         subIndex = self.series.index[10:20]
