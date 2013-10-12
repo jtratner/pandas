@@ -1802,6 +1802,68 @@ class Index(PandasObject):
             raise ValueError('labels %s not contained in axis' % labels[mask])
         return self.delete(indexer)
 
+
+class RangeIndex(Index):
+    """
+    Immutable Index representing the default index for PandasObjects (i.e.,
+    sequential integers).
+    """
+    # I guess I could potentially see including step here as well? Maybe too
+    # complicated...
+
+    # also doesn't handle reversed order
+
+    # Moving data from first arg lets you have a much cleaner setup here...
+    def __init__(self, start=None, stop=None, names=None, data=None):
+        # well, you could actually be passing pre-computed start/stop/etc, but
+        # whatever.
+        assert data is None, ("No idea what data you could be passing to"
+                              " RangeIndex")
+        self.start = start
+        self.stop = stop
+        self.names = names
+
+    @property
+    def as_int64index(self):
+        return Int64Index(np.arange(self.start, self.stop), name=self.name)
+
+    _values = values = as_int64index
+
+    def __array__(self):
+        return self.values
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            if slice.step is not None and slice.step != 1:
+                obj = self.as_int64index.__getitem__(key)
+            elif (slice.start is not None and slice.start >= self.stop or
+                    slice.stop is not None and slice.stop <= slice.start):
+                obj = Int64Index([], name=self.name)
+            else:
+                obj = RangeIndex(slice.start or self.start, slice.stop or
+                                 self.stop)
+            return obj
+
+        elif com.is_integer(key):
+            if key >= len(self):
+                raise IndexError("index out of range %d" % key)
+            else:
+                return self.start + key
+        else:
+            raise TypeError("Invalid key type: '%s'" % type(key).__name__)
+
+    def __iter__(self):
+        for i in range(self.start, self.stop):
+            yield i
+
+    def __len__(self):
+        return self.stop - self.start
+
+    def _reconstruct(self, other):
+        # TODO: check for reusable ranges here...
+        return Index(other, name=self.name)
+
+
 # TODO: Move as many methods as possible to ObjectIndex so that Index is a very
 # thin class
 class ObjectIndex(Index):
