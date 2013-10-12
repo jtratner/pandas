@@ -936,21 +936,6 @@ class Index(PandasObject):
         values[mask] = na_rep
         return values.tolist()
 
-    def equals(self, other):
-        """
-        Determines if two Index objects contain the same elements.
-        """
-        if self.is_(other):
-            return True
-
-        if not isinstance(other, Index):
-            return False
-
-        # default index
-        if type(other) != Index:
-            return other.equals(self)
-
-        return np.array_equal(self.values, other.values)
 
     def identical(self, other):
         """
@@ -1848,6 +1833,22 @@ class ObjectIndex(Index):
         self._data = data
         if names:
             self.set_names(names, inplace=True)
+
+    def equals(self, other):
+        """
+        Determines if two Index objects contain the same elements.
+        """
+        if self.is_(other):
+            return True
+
+        if not isinstance(other, Index):
+            return False
+
+        # default index
+        if type(other) != ObjectIndex:
+            return other.equals(self)
+
+        return np.array_equal(self.values, other.values)
 
 class Int64Index(Index):
 
