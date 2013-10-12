@@ -183,7 +183,7 @@ class IndexMeta(type):
                 args = []
                 subarr = data
                 # fastpath = True??
-                kwargs = dict(names=names, copy=kwargs['copy'])
+                kwargs = dict(names=names, copy=copy)
 
             elif dtype is not None:
                 try:
