@@ -124,7 +124,11 @@ class IndexMeta(type):
     a specific subclass of Index go through without interference (so Index
     subclasses only need care about validating data to their own
     circumstances...*not*, in general, necessary for them to do any inference
-    (and therefore they need not define __new__)"""
+    (and therefore they need not define __new__).
+
+    __call__ does one other thing: it handles ambiguities with name vs. names,
+    always passing 'names' to IndexMeta types, so IndexMeta types can safely
+    ignore the names kwarg."""
     # TODO: Probably need to have another metaclass for DatetimeIndex
     # Defining a metaclass here because it simplifies the Index constructor
     # *considerably*. Plus, this has the fantastic bonus of eliminating nearly
