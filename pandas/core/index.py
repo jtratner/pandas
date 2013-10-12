@@ -2201,6 +2201,12 @@ class MultiIndex(Index):
             # probably unnecessary
             self.sortorder = sortorder
 
+    # TODO: Change this - to be smarter.
+    def __reduce__(self):
+        kwargs = tuple((attr, getattr(self, attr)) for attr in self._metadata)
+        return (_unpickle, # callable
+                (type(self), self._data, kwargs)) # data and kwargs - other option would be to use __setstate__ and __getstate__
+
     def _get_levels(self):
         return self._levels
 
@@ -2757,22 +2763,6 @@ class MultiIndex(Index):
             return True
         except KeyError:
             return False
-
-    def __getstate__(self):
-        """Necessary for making this object picklable"""
-        return ([lev.view(np.ndarray) for lev in self.levels],
-                [label.view(np.ndarray) for label in self.labels],
-                self.sortorder, list(self.names))
-
-    def __setstate__(self, state):
-        """Necessary for making this object picklable"""
-        levels, labels, sortorder, names = state
-
-        self._set_levels([Index(x) for x in levels], validate=False)
-        self._set_labels(labels)
-        self._set_names(names)
-        self.sortorder = sortorder
-        self._reset_identity()
 
     def __getitem__(self, key):
         if np.isscalar(key):
