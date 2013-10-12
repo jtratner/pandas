@@ -581,11 +581,15 @@ class Index(PandasObject):
     @property
     def values(self):
         return self._data
-    # This should be a non-copying method
-    _values = values
+
+    # I'm trying to use this to mark where a copy isn't required
+    # NOT going to remain by the end of this refactor
+    @property
+    def _values_no_copy(self):
+        return self.values
 
     def get_values(self):
-        return self.values
+        return self._values_no_copy
 
     _na_value = np.nan
     """The expected NA value to use with this index."""
@@ -747,7 +751,7 @@ class Index(PandasObject):
     @cache_readonly
     def _engine(self):
         # property, for now, slow to look up
-        return self._engine_type(lambda: self.values, len(self))
+        return self._engine_type(lambda: self._values_no_copy, len(self))
 
     def _get_level_number(self, level):
         if not isinstance(level, int):
@@ -1327,12 +1331,12 @@ class Index(PandasObject):
         return self, other
 
     def groupby(self, to_groupby):
-        to_groupby = com._values_from_object(to_groupby)
-        return self._groupby(self.values, to_groupby)
+        to_groupby = com._values_from_object(to_groupby, index_only=True)
+        return self._groupby(self._values_no_copy, to_groupby)
 
     def map(self, mapper):
-        mapper = com._values_from_object(mapper)
-        return self._arrmap(self.values, mapper)
+        mapper = com._values_from_object(mapper, index_only=True)
+        return self._arrmap(self._values_no_copy, mapper)
 
     def isin(self, values):
         """
@@ -1349,10 +1353,10 @@ class Index(PandasObject):
         """
         value_set = set(values)
         # TODO: Probably have asobject to return ndarray
-        return lib.ismember(self.__array__(), value_set)
+        return lib.ismember(self._values_no_copy, value_set)
 
     def _array_values(self):
-        return self._values
+        return self._values_no_copy
 
     def _get_method(self, method):
         if method:
