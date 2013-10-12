@@ -323,22 +323,6 @@ class Index(PandasObject):
     def any(self):
         return self._data.any()
 
-    # hack - figure out a better way to do this later
-    _finished = False
-
-    @classmethod
-    def _instantiate(cls, new_klass, *args, **kwargs):
-        """Called from __new__ to instantiate objects (and call their __new__
-            methods if necessary"""
-        # Only need to call __new__ if it's different than our current __new__
-        if new_klass.__new__ is not cls.__new__:
-            obj = new_klass(*args, **kwargs)
-        else:
-            obj = super(Index, cls).__new__(new_klass)
-            obj.__init__(*args, **kwargs)
-            obj._finished = True
-        return obj
-
     def __unicode__(self):
         """
         Return a string representation for this object.
@@ -1951,8 +1935,7 @@ class Int64Index(Index):
     def __init__(self, data, dtype=None, copy=False, name=None, fastpath=False,
                  names=None):
         self._reset_identity()
-        if self._finished:
-            return
+        names = _combine_names_or_fail(name, names)
         if fastpath:
             self._data = data
             if names:
