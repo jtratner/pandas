@@ -49,8 +49,10 @@ class TestTseriesUtil(unittest.TestCase):
     def test_pad(self):
         old = Index([1, 5, 10])
         new = Index(lrange(12))
-
-        filler = algos.pad_int64(old, new)
+        # other option would be to add wrappers *within* the cython methods
+        # s.t. they always call `__array__()` if possible (so there'd be
+        # pad_int64 that delegates to _pad_int64, etc.
+        filler = algos.pad_int64(old.values, new.values)
 
         expect_filler = [-1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2]
         self.assert_(np.array_equal(filler, expect_filler))
@@ -58,7 +60,7 @@ class TestTseriesUtil(unittest.TestCase):
         # corner case
         old = Index([5, 10])
         new = Index(lrange(5))
-        filler = algos.pad_int64(old, new)
+        filler = algos.pad_int64(old.values, new.values)
         expect_filler = [-1, -1, -1, -1, -1]
         self.assert_(np.array_equal(filler, expect_filler))
 
@@ -166,7 +168,7 @@ def test_left_join_indexer2():
     idx = Index([1, 1, 2, 5])
     idx2 = Index([1, 2, 5, 7, 9])
 
-    res, lidx, ridx = algos.left_join_indexer_int64(idx2, idx)
+    res, lidx, ridx = algos.left_join_indexer_int64(idx2.values, idx.values)
 
     exp_res = np.array([1, 1, 2, 5, 7, 9], dtype=np.int64)
     assert_almost_equal(res, exp_res)
@@ -182,7 +184,7 @@ def test_outer_join_indexer2():
     idx = Index([1, 1, 2, 5])
     idx2 = Index([1, 2, 5, 7, 9])
 
-    res, lidx, ridx = algos.outer_join_indexer_int64(idx2, idx)
+    res, lidx, ridx = algos.outer_join_indexer_int64(idx2.values, idx.values)
 
     exp_res = np.array([1, 1, 2, 5, 7, 9], dtype=np.int64)
     assert_almost_equal(res, exp_res)
@@ -198,7 +200,7 @@ def test_inner_join_indexer2():
     idx = Index([1, 1, 2, 5])
     idx2 = Index([1, 2, 5, 7, 9])
 
-    res, lidx, ridx = algos.inner_join_indexer_int64(idx2, idx)
+    res, lidx, ridx = algos.inner_join_indexer_int64(idx2.values, idx.values)
 
     exp_res = np.array([1, 1, 2, 5], dtype=np.int64)
     assert_almost_equal(res, exp_res)
