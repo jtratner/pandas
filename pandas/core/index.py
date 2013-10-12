@@ -1,6 +1,6 @@
 # pylint: disable=E1101,E1103,W0232
 import datetime
-from functools import partial, wraps
+from functools import partial
 from warnings import warn
 from pandas.compat import range, zip, lrange, lzip, u
 from pandas import compat
@@ -93,16 +93,8 @@ def _delegate_to_ndarray_property(attr, setter=None, deleter=None):
     return property(fget=getter, fset=setter, fdel=deleter)
 
 def _wrap_cython_index_method(method, reconstruct=True):
-    """Wraps Cython method by converting to values first [note that it assumes
-    op will be non-destructive on passed array"""
-    # TODO: Copy metadata here too
-    @wraps(method)
-    def wrapper(self, *args, **kwargs):
-        result = method(self._values, *args, **kwargs)
-        if reconstruct:
-            result = self._reconstruct(result)
-        return result
-    # can't really use this because Cython methods don't take values correctly
+    """Marker for cythonized index methods that require ndarrays (i.e., to
+    potentially make a different decision. Clearly it's a noop now"""
     wrapper = method
     return wrapper
 
