@@ -1033,10 +1033,12 @@ class DatetimeIndex(Int64Index):
 
     def _fast_union(self, other):
         if len(other) == 0:
-            return self.view(type(self))
+            return self.view()
 
         if len(self) == 0:
-            return other.view(type(self))
+            # TODO: Call __finalize__(other) on this. [I think?]
+            # or maybe it's __finalize__(self)?
+            return self.__class__(com._values_from_object(other))
 
         # to make our life easier, "sort" the two ranges
         if self[0] <= other[0]:
