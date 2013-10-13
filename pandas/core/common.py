@@ -123,7 +123,7 @@ def _isnull_new(obj):
     if isinstance(obj, pd.Index):
         obj = _values_from_object(obj)
 
-    if isinstance(obj, (ABCSeries, np.ndarray)):
+    if isinstance(obj, (np.ndarray, ABCSeries)):
         return _isnull_ndarraylike(obj)
     elif isinstance(obj, ABCGeneric):
         return obj.apply(isnull)
@@ -152,7 +152,7 @@ def _isnull_old(obj):
     elif isinstance(obj, pd.Index):
         obj = _values_from_object(obj)
 
-    if isinstance(obj, (ABCSeries, np.ndarray)):
+    if isinstance(obj, (np.ndarray, ABCSeries)):
         return _isnull_ndarraylike_old(obj)
     elif isinstance(obj, ABCGeneric):
         return obj.apply(_isnull_old)
@@ -271,8 +271,8 @@ def notnull(obj):
 
 
 def _iterable_not_string(x):
-    return (isinstance(x, collections.Iterable) and
-            not isinstance(x, compat.string_types))
+    return (not isinstance(x, compat.string_types)
+            and isinstance(x, collections.Iterable))
 
 
 def flatten(l):
@@ -1604,7 +1604,7 @@ def _possibly_cast_to_datetime(value, dtype, coerce=False):
 
 
 def _is_bool_indexer(key):
-    if isinstance(key, (ABCSeries, np.ndarray, pd.Index)):
+    if isinstance(key, (np.ndarray, pd.Index, ABCSeries)):
         if key.dtype == np.object_:
             key = np.asarray(_values_from_object(key))
 
@@ -1901,7 +1901,7 @@ def is_bool(obj):
 
 
 def is_integer(obj):
-    return isinstance(obj, (numbers.Integral, np.integer))
+    return isinstance(obj, (np.integer, numbers.Integral))
 
 
 def is_float(obj):
@@ -1909,7 +1909,7 @@ def is_float(obj):
 
 
 def is_complex(obj):
-    return isinstance(obj, (numbers.Complex, np.complexfloating))
+    return isinstance(obj, (np.complexfloating, numbers.Complex))
 
 
 def is_iterator(obj):
@@ -1918,7 +1918,7 @@ def is_iterator(obj):
 
 
 def is_number(obj):
-    return isinstance(obj, (numbers.Number, np.number))
+    return isinstance(obj, (np.number, numbers.Number))
 
 
 def is_integer_dtype(arr_or_dtype):
