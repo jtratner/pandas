@@ -91,12 +91,20 @@ def _get_single_key(pat, silent):
     return key
 
 
-def _get_option(pat, silent=False):
-    key = _get_single_key(pat, silent)
+def _get_option(key, silent=False):
+    key = key.lower()
+    try:
+        if not silent:
+            _warn_if_deprecated(key)
+        key = _translate_key(key)
 
-    # walk the nested dict
-    root, k = _get_root(key)
-    return root[k]
+        # walk the nested dict
+        root, k = _get_root(key)
+        return root[k]
+    except OptionError:
+        raise
+    except KeyError:
+        raise OptionError("No such keys(s): %r" % key)
 
 
 def _set_single_option(pat, value, silent):
