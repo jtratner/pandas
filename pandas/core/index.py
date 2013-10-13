@@ -459,8 +459,11 @@ class Index(PandasObject):
         return pd.Series(self.values, index=self, name=self.name)
 
     def astype(self, dtype):
-        return Index(self.values.astype(dtype), name=self.name,
-                     dtype=dtype)
+        if np.dtype(dtype) == np.object_:
+            return self.asobject
+        else:
+            return Index(self.values.astype(dtype), name=self.name,
+                         dtype=dtype)
 
     def to_datetime(self, dayfirst=False):
         """
@@ -774,16 +777,6 @@ class Index(PandasObject):
 
     def __iter__(self):
         return iter(self.values)
-
-    def __getstate__(self):
-        """Necessary for making this object picklable"""
-        return dict(_data=self._data, name=self.name)
-
-    def __setstate__(self, state):
-        """Necessary for making this object picklable"""
-        # need to reset object id
-        return self._constructor(state.pop('_data'), name=state.pop('name'),
-                                 fastpath=True)
 
     def __contains__(self, key):
         hash(key)
@@ -1331,11 +1324,11 @@ class Index(PandasObject):
         return self, other
 
     def groupby(self, to_groupby):
-        to_groupby = com._values_from_object(to_groupby, index_only=True)
+        # to_groupby = com._values_from_object(to_groupby, index_only=True)
         return self._groupby(self._values_no_copy, to_groupby)
 
     def map(self, mapper):
-        mapper = com._values_from_object(mapper, index_only=True)
+        # mapper = com._values_from_object(mapper, index_only=True)
         return self._arrmap(self._values_no_copy, mapper)
 
     def isin(self, values):
@@ -1352,7 +1345,7 @@ class Index(PandasObject):
         is_contained : ndarray (boolean dtype)
         """
         value_set = set(values)
-        # TODO: Get rid of _array_values()
+        # TODO: Get rid of _array_values() [probably can just be asobject]
         return lib.ismember(self._array_values(), value_set)
 
     def _array_values(self):
@@ -1864,6 +1857,7 @@ class ObjectIndex(Index):
     """Generic Index type. NOT public."""
     def __init__(self, data, name=None, names=None, dtype=None, copy=False,
                  fastpath=False):
+        # TODO: possibly be interested in fastpath
         names = _combine_names_or_fail(name, names)
         if names:
             self.set_names(names, inplace=True)
@@ -1872,20 +1866,26 @@ class ObjectIndex(Index):
 
         if np.isscalar(data):
             self._scalar_data_error(data)
-        if not fastpath:
-            data = np.asarray(data, dtype=dtype)
+
+        if dtype is not None and np.dtype(dtype) != _o_dtype:
+            raise ValueError("Can only have ObjectIndex with dtype object!")
+
+        # MUST be object dtype
+        data = np.asarray(data, dtype=object)
 
         # these are assertions just to see how things are shaping up
         assert isinstance(data, np.ndarray), ("Can't pass fastpath=True and "
                                               " no ndarray to Object Index")
-        # This assertion is definitely not necessary
-        assert dtype is None or dtype is _o_dtype or dtype is object, (
-            "ObjectIndex constructor must be called with object dtype only")
 
         if copy:
             data = data.copy()
         # TypeErrors if not matching?
         self._data = data
+
+    # hey, asobject for ObjectIndex is itself - heyo!
+    @property
+    def asobject(self):
+        return self
 
     def equals(self, other):
         """

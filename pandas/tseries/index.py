@@ -736,7 +736,7 @@ class DatetimeIndex(Int64Index):
     def _get_object_index(self):
         boxfunc = lambda x: Timestamp(x, offset=self.offset, tz=self.tz)
         boxed_values = lib.map_infer(self.asi8, boxfunc)
-        return Index(boxed_values, dtype=object)
+        return ObjectIndex(boxed_values)
 
     def to_pydatetime(self):
         """
