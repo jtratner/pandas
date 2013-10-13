@@ -502,7 +502,8 @@ def _select_options(pat):
     if pat == 'all':  # reserved key
         return keys
 
-    return [k for k in keys if re.search(pat, k, re.I)]
+    pat = re.compile(pat, re.I)
+    return [k for k in keys if pat.search(k)]
 
 
 def _get_root(key):
