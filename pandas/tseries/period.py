@@ -7,7 +7,8 @@ from pandas.core.base import PandasObject
 
 from pandas.tseries.frequencies import (get_freq_code as _gfc,
                                         _month_numbers, FreqGroup)
-from pandas.tseries.index import DatetimeIndex, Int64Index, Index, _unpickle
+from pandas.tseries.index import (DatetimeIndex, Int64Index, Index, _unpickle,
+                                  ObjectIndex)
 from pandas.tseries.tools import parse_time_string
 import pandas.tseries.frequencies as _freq_mod
 
@@ -719,7 +720,7 @@ class PeriodIndex(Int64Index):
 
     @property
     def asobject(self):
-        return Index(self._box_values(self.values), dtype=object)
+        return ObjectIndex(self._box_values(self.values), dtype=object)
 
     def _array_values(self):
         return self.asobject.values

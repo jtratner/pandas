@@ -9,7 +9,8 @@ import numpy as np
 from pandas.core.common import (isnull, _NS_DTYPE, _INT64_DTYPE,
                                 is_list_like,_values_from_object, _maybe_box,
                                 notnull)
-from pandas.core.index import Index, Int64Index, _Identity, _unpickle
+from pandas.core.index import (Index, Int64Index, _Identity, _unpickle,
+                               ObjectIndex)
 import pandas.compat as compat
 from pandas.compat import u
 from pandas.tseries.frequencies import (
