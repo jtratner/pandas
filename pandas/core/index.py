@@ -26,30 +26,27 @@ default_pprint = lambda x: com.pprint_thing(x, escape_chars=('\t', '\r', '\n'),
 
 __all__ = ['Index']
 
+# There are a number of synonymous properties used here. They are set up this
+# way for clarity but I'll probably decide to combine one or more at the end.
+# 1 .values --> Used when expecting ndarray (but potentially could be mutating)
+# 2 ._values_no_copy --> Used when wanting to get underlying data (and
+# going to a Cythonized method or other non-Index method that requires an
+# ndarray) -- may be slow for MI, but no other option.
+# 3 ._data --> Used when it's supposed to be an internal method that returns
+# Index-like, so MI can do something more intelligent.
+# (Maybe #2 and #3 are similar?)
+
+
 # unpickle objects via 3 args (cls, data, kwargs)
 # sets fastpath to True if it's not set on class
 def _unpickle(cls, data, kwargs):
     kwargs = dict(kwargs)
+    # TODO: consider whether this should actually be fastpath
     kwargs.setdefault('fastpath', True)
     return cls(data, **kwargs)
 
+# required for pickle to accept this as an unpickling function
 _unpickle.__safe_for_unpickling__ = True
-
-def _indexOp(opname):
-    """
-    Wrapper function for index comparison operations, to avoid
-    code duplication.
-    """
-
-    def wrapper(self, other):
-        func = getattr(self._values_no_copy, opname)
-        result = func(other)
-        try:
-            return result._values_no_copy
-        except:  # pragma: no cover
-            return result
-    return wrapper
-
 
 class InvalidIndexError(Exception):
     pass
@@ -63,6 +60,7 @@ def _shouldbe_timestamp(obj):
             or tslib.is_datetime64_array(obj)
             or tslib.is_timestamp_array(obj))
 
+# TODO: Change this back to more normal identity-like.
 counter = [0]
 class _Identity(object):
     def __init__(self):
@@ -74,23 +72,25 @@ class _Identity(object):
 
 
 def _delegate_to_ndarray_method(name):
+    """Wrapper around ndarray methods - need to overwrite if ``_data`` is not
+    an ndarray"""
     def wrapper(self, *args, **kwargs):
         return getattr(self._data, name)(*args, **kwargs)
+    op = getattr(np.ndarray, name, None)
     wrapper.__name__ = name
-    wrapper.__doc__ = getattr(np.ndarray, '__doc__', None)
+    if op is not None:
+        wrapper.__doc__ = getattr(op, '__doc__', None)
+    else:
+        wrapper.__doc__ = "Wrapper that delegates to ndarray method '%s'" % name
     return wrapper
 
-def _delegate_to_ndarray_property(attr, setter=None, deleter=None):
-    _setter = _deleter = None
+def _delegate_to_ndarray_property(attr):
+    """Wrapper around ndarray properties - need to overwrite if ``_data`` is
+    not an ndarray"""
     def getter(self):
         return getattr(self._data, attr)
-    if setter:
-        def _setter(self, value):
-            setattr(self._data, attr, value)
-    if deleter:
-        def _deleter(self):
-            delattr(self._data, attr)
-    return property(fget=getter, fset=setter, fdel=deleter)
+    return property(fget=getter,
+                    doc="Wrapper delegating to ndarray property '%s'" % attr)
 
 def _wrap_cython_index_method(method, reconstruct=True):
     """Marker for cythonized index methods that require ndarrays (i.e., to
@@ -131,17 +131,17 @@ class IndexMeta(type):
     # TODO: Make Index(arrays) or Index(tuples) return MI (maybe allow
     # ObjectIndex to handle??)
     def __call__(cls, data=None, *args, **kwargs):
+        print(cls, data, args, kwargs)
         # TODO: Pass fastpaths where possible... (i.e., self._data = data,
         # self.names = names)
 
         # this too slow? Probably fine right?
         if 'levels' in kwargs or 'labels' in kwargs:
             cls = MultiIndex
-        # short-circuit on fastpath or explicit call of different type
+        # short-circuit constructor if class isn't Index.
         # ONLY get type inference if you call with Index()
-        if cls != Index or kwargs.get('fastpath', None):
-            if cls is Index:
-                cls = ObjectIndex
+        # (fastpath only makes sense for Index subclasses...)
+        if cls != Index:
             obj = cls.__new__(cls, data, *args, **kwargs)
             if isinstance(obj, cls):
                 obj.__init__(data, *args, **kwargs)
@@ -208,7 +208,7 @@ class IndexMeta(type):
                     subarr = subarr.copy()
 
         elif np.isscalar(data):
-            cls._scalar_data_error(data)
+            raise cls._scalar_data_error(data)
 
         else:
             # other iterable of some kind
@@ -271,6 +271,44 @@ class Index(PandasObject):
     -----
     An Index instance can **only** contain hashable objects
     """
+
+    @property
+    def _constructor(self):
+        """Default constructor is __class__"""
+        return type(self)
+
+    @property
+    def asobject(self):
+        return ObjectIndex(self.values.astype('O'),
+                           fastpath=True).__finalize__(self)
+
+    _metadata = ['name']
+
+    def __finalize__(self, old, method=None):
+        """Called on to move over metadata from old to new object. Must
+        overwrite this method to handle this, otherwise just moves over names.
+        Note that everything passed here must *not* affect object construction,
+        anything necessary for that needs to happen in ``_reconstruct``.
+
+        Default (will be) to just setattr on the object (using object.__setattr__),
+        so subclasses should override if direct property access is not
+        possible.
+        """
+        # TOOD: separate out _metadata from stuff that can't be set.
+        if isinstance(old, Index):
+            self.names = old.names
+        return self
+
+
+    # potential stub for reconstructing from ndarray (as opposed to
+    # __finalize__, which actually
+    # like ``__array_finalize__`` but in reverse (obj is data for new index)
+    # TODO: Rename this - maybe to __finalize__?
+    def _reconstruct(self, data):
+        kwargs = dict((k, getattr(self, k, None)) for k in self._metadata)
+        kwargs.setdefault('fastpath', True)
+        return self.__class__(data=data, **kwargs)
+
     def _disabled(self, *args, **kwargs):
         """This method will not function because object is immutable."""
         raise TypeError("'%s' does not support mutable operations." %
@@ -294,7 +332,6 @@ class Index(PandasObject):
     name = None
     asi8 = None
     # this + _data should be all that's needed to reconstruct the object
-    _metadata = ['name']
 
     _engine_type = _index.ObjectEngine
 
@@ -302,13 +339,6 @@ class Index(PandasObject):
     __len__ = _delegate_to_ndarray_property('__len__')
     shape = _delegate_to_ndarray_property('shape')
     searchsorted = _delegate_to_ndarray_method('searchsorted')
-
-    # like ``__array_finalize__`` but in reverse (obj is data for new index)
-    # TODO: Rename this - maybe to __finalize__?
-    def _reconstruct(self, data):
-        kwargs = dict((k, getattr(self, k, None)) for k in self._metadata)
-        kwargs.setdefault('fastpath', True)
-        return self.__class__(data=data, **kwargs)
 
 
     def __reduce__(self):
@@ -373,6 +403,8 @@ class Index(PandasObject):
         shallow_copy = shallow_copy or single_arg_view
         if shallow_copy:
             return self._shallow_copy()
+        warn("Using view() to get a view of underlying values may be"
+             " deprecated in a future release, use ``get_values`` instead.")
         # TODO: Decide if this should be allowed and also whether this should
         #       be values or data...
         return self.values.view(*args, **kwargs)
@@ -384,12 +416,14 @@ class Index(PandasObject):
     # construction helpers
     @classmethod
     def _scalar_data_error(cls, data):
-        raise TypeError('{0}(...) must be called with a collection '
+        # returns TypeError rather than raises for clarity in caller
+        return TypeError('{0}(...) must be called with a collection '
                         'of some kind, {1} was passed'.format(cls.__name__,repr(data)))
 
     @classmethod
     def _string_data_error(cls, data):
-        raise TypeError('String dtype not supported, you may need '
+        # returns TypeError rather than raises for clarity in caller
+        return TypeError('String dtype not supported, you may need '
                         'to explicitly cast to a numeric type')
 
     @classmethod
@@ -400,7 +434,7 @@ class Index(PandasObject):
             data = data.__array__()
         elif not isinstance(data, np.ndarray):
             if np.isscalar(data):
-                cls._scalar_data_error(data)
+                raise cls._scalar_data_error(data)
 
             # other iterable of some kind
             if not isinstance(data, (list, tuple)):
@@ -408,6 +442,7 @@ class Index(PandasObject):
             data = np.asarray(data)
         return data
 
+    # enable asarray
     def __array__(self, result=None):
         return self.values
 
@@ -415,6 +450,7 @@ class Index(PandasObject):
         return self._reconstruct(result)
 
     def _shallow_copy(self):
+        # res = self._constructor(self._data).__finalize__(self)
         res = self._reconstruct(self._data)
         res._id = self._id
         return res
@@ -922,6 +958,7 @@ class Index(PandasObject):
         return self.equals(other) and all(
             (getattr(self, c, None) == getattr(other, c, None) for c in self._metadata))
 
+    # TODO: This also suggests it should only be on Datetime-likes
     def asof(self, label):
         """
         For a sorted index, return the most recent label up to and including
@@ -942,6 +979,7 @@ class Index(PandasObject):
             label = Timestamp(label)
         return label
 
+    # TODO: Suggests that this should be datetime-like
     def asof_locs(self, where, mask):
         """
         where : array of timestamps
@@ -967,6 +1005,8 @@ class Index(PandasObject):
         if not ascending:
             _as = _as[::-1]
 
+        # sorted_index = self._constructor(self._data.take(_as))
+        # sorted_index = sorted_index.__finalize__(self)
         sorted_index = self._reconstruct(self._data.take(_as))
 
         if return_indexer:
@@ -974,9 +1014,11 @@ class Index(PandasObject):
         else:
             return sorted_index
 
-    def sort(self, *args, **kwargs):
-        raise TypeError('Cannot sort an %r object' % self.__class__.__name__)
+    # doesn't make sense to have anymore
+    # def sort(self, *args, **kwargs):
+    #     raise TypeError('Cannot sort an %r object' % self.__class__.__name__)
 
+    # TODO: See what this does on regular Index in 0.13
     def shift(self, periods=1, freq=None):
         """
         Shift Index containing datetime objects by input number of periods and
@@ -991,6 +1033,7 @@ class Index(PandasObject):
             return self
 
         offset = periods * freq
+        # return Index([idx + offset for idx in self]).__finalize__(self)
         return Index([idx + offset for idx in self], name=self.name)
 
     def argsort(self, *args, **kwargs):
@@ -1006,12 +1049,12 @@ class Index(PandasObject):
             return Index(self._values_no_copy + other)
 
     __iadd__ = __add__
-    __eq__ = _indexOp('__eq__')
-    __ne__ = _indexOp('__ne__')
-    __lt__ = _indexOp('__lt__')
-    __gt__ = _indexOp('__gt__')
-    __le__ = _indexOp('__le__')
-    __ge__ = _indexOp('__ge__')
+    __eq__ = _delegate_to_ndarray_method('__eq__')
+    __ne__ = _delegate_to_ndarray_method('__ne__')
+    __lt__ = _delegate_to_ndarray_method('__lt__')
+    __gt__ = _delegate_to_ndarray_method('__gt__')
+    __le__ = _delegate_to_ndarray_method('__le__')
+    __ge__ = _delegate_to_ndarray_method('__ge__')
 
     def __sub__(self, other):
         return self.diff(other)
@@ -1865,7 +1908,7 @@ class ObjectIndex(Index):
         self._reset_identity()
 
         if np.isscalar(data):
-            self._scalar_data_error(data)
+            raise self._scalar_data_error(data)
 
         if dtype is not None and np.dtype(dtype) != _o_dtype:
             raise ValueError("Can only have ObjectIndex with dtype object!")
@@ -1882,7 +1925,7 @@ class ObjectIndex(Index):
         # TypeErrors if not matching?
         self._data = data
 
-    # hey, asobject for ObjectIndex is itself - heyo!
+    # asobject for ObjectIndex is itself - heyo!
     @property
     def asobject(self):
         return self
@@ -1948,7 +1991,7 @@ class Int64Index(Index):
         data = self._coerce_to_ndarray(data)
 
         if issubclass(data.dtype.type, compat.string_types):
-            self._string_data_error(data)
+            raise self._string_data_error(data)
 
         elif issubclass(data.dtype.type, np.integer):
             # don't force the upcast as we may be dealing
@@ -1970,6 +2013,7 @@ class Int64Index(Index):
     @property
     def inferred_type(self):
         return 'integer'
+
 
     @property
     def asi8(self):
@@ -2029,6 +2073,7 @@ class Float64Index(Index):
 
     def __init__(self, data, dtype=None, copy=False, name=None, names=None, fastpath=False):
         self._reset_identity()
+        names = _combine_names_or_fail(name, names)
 
         if fastpath:
             # better to do this here so don't have to change Index when engine
@@ -2037,13 +2082,13 @@ class Float64Index(Index):
                 data = data.astype(object)
             self._data = data
             if names:
-                self.name = names[0]
+                self.names = names
             return
 
         data = self._coerce_to_ndarray(data)
 
         if issubclass(data.dtype.type, compat.string_types):
-            self._string_data_error(data)
+            raise self._string_data_error(data)
 
         if dtype is None:
             dtype = np.float64
@@ -2059,7 +2104,8 @@ class Float64Index(Index):
             subarr = subarr.astype(object)
 
         self._data = subarr
-        self.name = name
+        if names:
+            self.names = names
 
     @property
     def inferred_type(self):
