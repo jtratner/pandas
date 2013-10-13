@@ -444,12 +444,15 @@ class DatetimeIndex(Int64Index):
 
     # TODO: This method can probably be removed
     @classmethod
-    def _simple_new(cls, values, name, freq=None, tz=None):
+    def _simple_new(cls, values, name, freq=None, tz=None,
+                    # just to match __new__
+                    verify_integrity=True):
         if values.dtype != _NS_DTYPE:
             values = getattr(values, 'values', values)
             values = com._ensure_int64(values).view(_NS_DTYPE)
 
-        return cls(values, name=name, freq=freq, tz=tools._maybe_get_tz(tz))
+        return cls(values, name=name, freq=freq, tz=tools._maybe_get_tz(tz),
+                   verify_integrity=verify_integrity)
 
 
     @property
@@ -1359,7 +1362,8 @@ class DatetimeIndex(Int64Index):
             if result.ndim > 1:
                 return result
 
-            return self._simple_new(result, self.name, new_offset, self.tz)
+            return self._simple_new(result, self.name, new_offset, self.tz,
+                                    verify_integrity=False)
 
     _getitem_slice = __getitem__
 
