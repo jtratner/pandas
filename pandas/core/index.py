@@ -1352,8 +1352,8 @@ class Index(PandasObject):
         is_contained : ndarray (boolean dtype)
         """
         value_set = set(values)
-        # TODO: Probably have asobject to return ndarray
-        return lib.ismember(self._values_no_copy, value_set)
+        # TODO: Get rid of _array_values()
+        return lib.ismember(self._array_values(), value_set)
 
     def _array_values(self):
         return self._values_no_copy
