@@ -1051,7 +1051,7 @@ class PeriodIndex(Int64Index):
 
     def __getitem__(self, key):
         """Override numpy.ndarray's __getitem__ method to work as desired"""
-        arr_idx = self.view(np.ndarray)
+        arr_idx = self._values_no_copy
         if np.isscalar(key):
             val = arr_idx[key]
             return Period(ordinal=val, freq=self.freq)
