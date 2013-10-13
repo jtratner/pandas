@@ -42,10 +42,10 @@ def _indexOp(opname):
     """
 
     def wrapper(self, other):
-        func = getattr(self.view(np.ndarray), opname)
+        func = getattr(self._values_no_copy, opname)
         result = func(other)
         try:
-            return result.view(np.ndarray)
+            return result._values_no_copy
         except:  # pragma: no cover
             return result
     return wrapper
@@ -1004,13 +1004,13 @@ class Index(PandasObject):
         """
         See docstring for ndarray.argsort
         """
-        return self.view(np.ndarray).argsort(*args, **kwargs)
+        return self._values_no_copy.argsort(*args, **kwargs)
 
     def __add__(self, other):
         if isinstance(other, Index):
             return self.union(other)
         else:
-            return Index(self.view(np.ndarray) + other)
+            return Index(self._values_no_copy + other)
 
     __iadd__ = __add__
     __eq__ = _indexOp('__eq__')
@@ -2329,7 +2329,7 @@ class MultiIndex(Index):
         ``deep``, but if ``deep`` is passed it will attempt to deepcopy.
         This could be potentially expensive on large MultiIndex objects.
         """
-        new_index = self.view()
+        new_index = self._shallow_copy()
         if deep:
             from copy import deepcopy
             levels = levels if levels is not None else deepcopy(self.levels)
@@ -2497,15 +2497,16 @@ class MultiIndex(Index):
         self._tuples = lib.fast_zip(values)
         return self._tuples
 
+    # TODO: REMOVE ALL OF THESE!!!!
     # fml
     @property
     def _is_v1(self):
-        contents = self.view(np.ndarray)
+        contents = self.values
         return len(contents) > 0 and not isinstance(contents[0], tuple)
 
     @property
     def _is_v2(self):
-        contents = self.view(np.ndarray)
+        contents = self.values
         return len(contents) > 0 and isinstance(contents[0], tuple)
 
     @property
