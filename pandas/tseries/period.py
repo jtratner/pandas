@@ -723,6 +723,8 @@ class PeriodIndex(Int64Index):
         return ObjectIndex(self._box_values(self.values), dtype=object)
 
     def _array_values(self):
+        # Needs to be object because list(self) returns periods, etc.
+        # (important for lib.ismember) --> otherwise would be int ndarray
         return self.asobject.values
 
     def astype(self, dtype):
