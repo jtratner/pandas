@@ -2546,13 +2546,6 @@ class MultiIndex(Index):
 
     @property
     def values(self):
-        # what was this testing?? It's always an empty array...
-        # if self._is_v2:
-        #     return self.view(np.ndarray)
-        # else:
-        if self._tuples is not None:
-            return self._tuples
-
         values = []
         for lev, lab in zip(self.levels, self.labels):
             taken = com.take_1d(lev.values, lab)
@@ -2563,18 +2556,6 @@ class MultiIndex(Index):
 
         self._tuples = lib.fast_zip(values)
         return self._tuples
-
-    # TODO: REMOVE ALL OF THESE!!!!
-    # fml
-    @property
-    def _is_v1(self):
-        contents = self.values
-        return len(contents) > 0 and not isinstance(contents[0], tuple)
-
-    @property
-    def _is_v2(self):
-        contents = self.values
-        return len(contents) > 0 and isinstance(contents[0], tuple)
 
     @property
     def _has_complex_internals(self):
