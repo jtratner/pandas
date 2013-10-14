@@ -1,3 +1,5 @@
+.. vim:tw=79
+
 ===========================
 Index Class - characterized
 ===========================
@@ -124,3 +126,13 @@ Special/Cythonized Methods and Properties (implementation detail - not really ne
 * ``_left_indexer``
 * ``_inner_indexer``
 * ``_outer_indexer``
+
+
+Other Notes on Changes in This PR
+=================================
+
+MultiIndex pickles from v0.7.3 and earlier (aka, 'v2' pickles) are no longer
+supported. That said, you can easily convert them by using any pandas version
+from 0.8, loading your pickle, running ``new_mi =
+MultiIndex(levels=pickled_mi.levels, labels=pickled_mi.labels)`` and then
+pickling the resulting object.
