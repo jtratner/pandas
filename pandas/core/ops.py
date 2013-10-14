@@ -302,15 +302,28 @@ class _TimeOp(object):
         from pandas.tseries.timedeltas import _possibly_cast_to_timedelta
 
         coerce = 'compat' if pd._np_version_under1p7 else True
+        skip_inference = False
         if not is_list_like(values):
             values = np.array([values])
+        # their values are not date-like, need object instead
+        # TODO: Decide whether it makes more sense to special case these below.
+        elif isinstance(values, pd.DatetimeIndex):
+            # skip inference here
+            return values.to_series()
+        elif isinstance(values, pd.PeriodIndex):
+            # skip inference here
+            return values.to_timestamp().to_series()
+        elif isinstance(values, pd.Index):
+            # pretty sure can be more intelligent about this...
+            if hasattr(values, '_box_values'):
+                values = values.asobject._values_no_copy
+            else:
+                values = values._values_no_copy
         inferred_type = lib.infer_dtype(values)
         if inferred_type in ('datetime64','datetime','date','time'):
             # a datetlike
             if not (isinstance(values, (pa.Array, pd.Series)) and com.is_datetime64_dtype(values)):
                 values = tslib.array_to_datetime(values)
-            elif isinstance(values, pd.DatetimeIndex):
-                values = values.to_series()
         elif inferred_type in ('timedelta', 'timedelta64'):
             # have a timedelta, convert to to ns here
             values = _possibly_cast_to_timedelta(values, coerce=coerce)
@@ -318,8 +331,6 @@ class _TimeOp(object):
             # py3 compat where dtype is 'm' but is an integer
             if values.dtype.kind == 'm':
                 values = values.astype('timedelta64[ns]')
-            elif isinstance(values, pd.PeriodIndex):
-                values = values.to_timestamp().to_series()
             elif name not in ('__truediv__','__div__','__mul__'):
                 raise TypeError("incompatible type for a datetime/timedelta "
                                 "operation [{0}]".format(name))
