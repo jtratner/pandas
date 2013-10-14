@@ -134,5 +134,11 @@ Other Notes on Changes in This PR
 MultiIndex pickles from v0.7.3 and earlier (aka, 'v2' pickles) are no longer
 supported. That said, you can easily convert them by using any pandas version
 from 0.8, loading your pickle, running ``new_mi =
-MultiIndex(levels=pickled_mi.levels, labels=pickled_mi.labels)`` and then
-pickling the resulting object.
+MultiIndex.from_tuples(list(pickled_mi.levels))`` and then pickling the
+resulting object.
+
+Passing ``MultiIndex(levels, labels)`` will now fail b/c of compatibility
+issues. Would be tricky (and not worth it IMHO) to re-enable.
+
+Maintains backward compatiiblity with Index(vals, dtype) format [2 pos'n args].
+Needs test case(s) though.
