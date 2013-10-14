@@ -96,7 +96,8 @@ def panel_index(time, panels, names=['time', 'panel']):
 
     labels = [time_factor.labels, panel_factor.labels]
     levels = [time_factor.levels, panel_factor.levels]
-    return MultiIndex(levels, labels, sortorder=None, names=names)
+    return MultiIndex(levels=levels, labels=labels, sortorder=None,
+                      names=names)
 
 
 
