@@ -122,6 +122,10 @@ class IndexMeta(type):
 
     Index subclasses need to be aware that they can be passed either names
     and/or name and should be prepared for both.
+
+    For backwards compatibility with ndarray, Index subclasses that can be
+    inferred (i.e., result from Index(...)) *must* have dtype as second
+    positional argument.
     """
 
     # TODO: Probably need to have another metaclass for DatetimeIndex
@@ -142,6 +146,12 @@ class IndexMeta(type):
             if isinstance(obj, cls):
                 obj.__init__(data, *args, **kwargs)
             return obj
+        # backwards compatibility with two argument constructor
+        # for ndarray-like
+        if len(args) == 2:
+            if 'dtype' in kwargs:
+                raise TypeError("Index received got multiple values for 'dtype'")
+            dtype = args[0]
 
         dtype = kwargs.get('dtype')
         copy = kwargs.get('copy')
@@ -465,6 +475,11 @@ class Index(PandasObject):
         In most cases, there should be no functional difference from using
         ``deep``, but if ``deep`` is passed it will attempt to deepcopy.
         """
+        constructor = self._constructor
+        # TODO: What does it mean to say 'pandas type'??
+        # if we're not changing dtype, then no need to do inference
+        if np.dtype(dtype) != self.dtype:
+            constructor = Index
         if names is not None and name is not None:
             raise TypeError("Can only provide one of `names` and `name`")
         if deep:
@@ -1889,7 +1904,7 @@ class RangeIndex(Index):
 # thin class
 class ObjectIndex(Index):
     """Generic Index type. NOT public."""
-    def __init__(self, data, name=None, names=None, dtype=None, copy=False,
+    def __init__(self, data, dtype=None, name=None, names=None, copy=False,
                  fastpath=False):
         # TODO: possibly be interested in fastpath
         names = _combine_names_or_fail(name, names)
@@ -2166,7 +2181,7 @@ class MultiIndex(Index):
 
     """
     Implements multi-level, a.k.a. hierarchical, index object for pandas
-    objects
+    objects.
 
     Parameters
     ----------
@@ -2179,6 +2194,11 @@ class MultiIndex(Index):
         level)
     names : optional sequence of objects
         Names for each of the index levels.
+
+    Notes
+    -----
+    You should not pass positional arguments to this constructor (and the data
+    is only used internally).
     """
     @property
     def not_implemented_property(self):
