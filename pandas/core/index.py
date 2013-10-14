@@ -2268,9 +2268,12 @@ class MultiIndex(Index):
 
     # TODO: Change this - to be smarter.
     def __reduce__(self):
-        kwargs = tuple((attr, getattr(self, attr)) for attr in self._metadata)
+        kwargs = dict((attr, getattr(self, attr)) for attr in self._metadata)
+        kwargs.update(dict(levels=[np.asarray(level) for level in self.levels],
+                           labels=[np.asarray(label) for label in self.labels]))
+
         return (_unpickle, # callable
-                (type(self), self._data, kwargs)) # data and kwargs - other option would be to use __setstate__ and __getstate__
+                (type(self), self._data, tuple(kwargs.items()))) # data and kwargs - other option would be to use __setstate__ and __getstate__
 
     def _get_levels(self):
         return self._levels
