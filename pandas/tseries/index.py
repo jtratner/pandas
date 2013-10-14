@@ -1350,6 +1350,7 @@ class DatetimeIndex(Int64Index):
             val = arr_idx[key]
             return Timestamp(val, offset=self.offset, tz=self.tz)
         else:
+            key = com._values_from_object(key)
             if com._is_bool_indexer(key):
                 key = np.asarray(key)
                 key = lib.maybe_booleans_to_slice(key.view(np.uint8))
@@ -1559,11 +1560,9 @@ class DatetimeIndex(Int64Index):
         return DatetimeIndex(arr, tz=self.tz)
 
     def _view_like(self, ndarray):
-        result = ndarray.view(type(self))
-        result.offset = self.offset
-        result.tz = self.tz
-        result.name = self.name
-        return result
+        return self._constructor(ndarray, freq=self.offset,
+                                 tz=self.tz, name=self.name,
+                                 fastpath=True)
 
     def tz_convert(self, tz):
         """

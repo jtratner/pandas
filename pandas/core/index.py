@@ -840,6 +840,7 @@ class Index(PandasObject):
         if np.isscalar(key):
             return self._data[key]
         else:
+            key = com._values_from_object(key, index_only=True)
             if com._is_bool_indexer(key):
                 key = np.asarray(key)
 

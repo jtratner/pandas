@@ -48,7 +48,8 @@ from pandas import compat
 from pandas.compat import u
 from pandas import (
     Timestamp, Period, Series, DataFrame, Panel, Panel4D,
-    Index, MultiIndex, Int64Index, PeriodIndex, DatetimeIndex, Float64Index, NaT
+    Index, MultiIndex, Int64Index, PeriodIndex, DatetimeIndex, Float64Index,
+    NaT, ObjectIndex
 )
 from pandas.sparse.api import SparseSeries, SparseDataFrame, SparsePanel
 from pandas.sparse.array import BlockIndex, IntIndex

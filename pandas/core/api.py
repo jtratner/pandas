@@ -7,7 +7,8 @@ from pandas.core.algorithms import factorize, match, unique, value_counts
 from pandas.core.common import isnull, notnull
 from pandas.core.categorical import Categorical
 from pandas.core.format import set_eng_float_format
-from pandas.core.index import Index, Int64Index, Float64Index, MultiIndex
+from pandas.core.index import (Index, Int64Index, Float64Index, MultiIndex,
+                               ObjectIndex)
 # side note - I would prefer this *not* be part of the public API - maybe need
 # to change its repr to pretend to be Index?
 from pandas.core.index import ObjectIndex
