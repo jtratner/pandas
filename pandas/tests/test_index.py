@@ -48,6 +48,18 @@ class TestIndex(unittest.TestCase):
         for name, ind in self.indices.items():
             setattr(self, name, ind)
 
+    def test_created_indices_have_expected_dtypes(self):
+        def testit(ind, dtype):
+            assert issubclass(ind.dtype.type, dtype.type), (
+                "dtype %s != dtype %s" % (ind.dtype.type, dtype.type))
+        testit(self.unicodeIndex, np.dtype(object))
+        testit(self.strIndex, np.dtype(object))
+        testit(self.dateIndex, np.dtype('datetime64[ns]'))
+        testit(self.intIndex, np.dtype(int))
+        testit(self.floatIndex, np.dtype(object))
+        testit(self.empty, np.dtype(object))
+        testit(self.tuples, np.dtype(object))
+
     def test_wrong_number_names(self):
         def testit(ind):
             ind.names = ["apple", "banana", "carrot"]
@@ -111,7 +123,7 @@ class TestIndex(unittest.TestCase):
         self.assert_(not hasattr(self.strIndex, 'sort'))
 
     def test_mutability(self):
-        with tm.assertRaisesRegexp(TypeError, 'immutable'):
+        with tm.assertRaisesRegexp(TypeError, 'does not support mutable op'):
             self.strIndex[0] = 'foo'
 
     def test_constructor(self):

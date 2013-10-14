@@ -125,7 +125,8 @@ class IndexMeta(type):
 
     For backwards compatibility with ndarray, Index subclasses that can be
     inferred (i.e., result from Index(...)) *must* have dtype as second
-    positional argument.
+    positional argument. Further, inferred classes may only expect at most two
+    positional arguments.
     """
 
     # TODO: Probably need to have another metaclass for DatetimeIndex
@@ -148,10 +149,13 @@ class IndexMeta(type):
             return obj
         # backwards compatibility with two argument constructor
         # for ndarray-like
-        if len(args) == 2:
+        if len(args):
             if 'dtype' in kwargs:
                 raise TypeError("Index received got multiple values for 'dtype'")
+            if len(args) > 1:
+                raise TypeError("Index accepts at most 2 positional arguments")
             dtype = args[0]
+            args = []
 
         dtype = kwargs.get('dtype')
         copy = kwargs.get('copy')
@@ -1505,8 +1509,8 @@ class Index(PandasObject):
             return result
 
         if self.dtype != other.dtype:
-            this = self.astype('O')
-            other = other.astype('O')
+            this = self.asobject
+            other = other.asobject
             return this.join(other, how=how,
                              return_indexers=return_indexers)
 
