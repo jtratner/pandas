@@ -108,10 +108,11 @@ class TestIndex(unittest.TestCase):
         self.assert_(not idx.is_unique)
 
     def test_sort(self):
-        self.assertRaises(TypeError, self.strIndex.sort)
+        self.assert_(not hasattr(self.strIndex, 'sort'))
 
     def test_mutability(self):
-        self.assertRaises(TypeError, self.strIndex.__setitem__, 0, 'foo')
+        with tm.assertRaisesRegexp(TypeError, 'immutable'):
+            self.strIndex[0] = 'foo'
 
     def test_constructor(self):
         # regular instance creation
