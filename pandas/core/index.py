@@ -490,7 +490,7 @@ class Index(PandasObject):
         if name is not None:
             names = [name]
         names = names or self.names
-        return Index(new_data, names=names, dtype=dtype, copy=False)
+        return constructor(new_data, names=names, dtype=dtype, copy=False)
 
     def to_series(self):
         """
