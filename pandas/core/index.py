@@ -344,6 +344,8 @@ class Index(PandasObject):
     __len__ = _delegate_to_ndarray_property('__len__')
     shape = _delegate_to_ndarray_property('shape')
     searchsorted = _delegate_to_ndarray_method('searchsorted')
+    ravel = _delegate_to_ndarray_method('ravel')
+    repeat = _delegate_to_ndarray_method('repeat')
 
 
     def __reduce__(self):
