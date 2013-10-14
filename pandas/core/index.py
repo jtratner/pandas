@@ -2232,14 +2232,13 @@ class MultiIndex(Index):
         assert data is None or len(data) == 0, "Undefined behavior when data is not none"
         # TODO: Once there's  an actual fastpath to work with (i.e., prepped
         # data), should change this.
-        if not fastpath:
-            if len(levels) != len(labels):
-                raise ValueError('Length of levels and labels must be the same.')
-            if len(levels) == 0:
-                raise ValueError('Must pass non-zero number of levels/labels')
-            if len(levels) == 1:
-                # What is this doing exactly?
-                return Index(levels[0], names=names, copy=True).take(labels[0])
+        if len(levels) != len(labels):
+            raise ValueError('Length of levels and labels must be the same.')
+        if len(levels) == 0:
+            raise ValueError('Must pass non-zero number of levels/labels')
+        if len(levels) == 1:
+            # What is this doing exactly?
+            return Index(levels[0], names=names, copy=True).take(labels[0])
         # will have __init__ called on itself - note that it's not playing
         # nicely with others here.
         return super(MultiIndex, cls).__new__(cls)
@@ -2247,6 +2246,7 @@ class MultiIndex(Index):
     def __init__(self, data=None, levels=None, labels=None, sortorder=None,
                  names=None, copy=False, fastpath=False):
         # validation of levles and labels happens in __new__
+        # TODO: remove this in favor of smarter repr
         self._data = np.empty(0, dtype=object)
         self._reset_identity()
 
