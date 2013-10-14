@@ -127,14 +127,10 @@ class IndexMeta(type):
     # TODO: Probably need to have another metaclass for DatetimeIndex
     # Defining a metaclass here because it simplifies the Index constructor
     # *considerably*. Plus, this has the fantastic bonus of eliminating nearly
-    # all recursion in the constructor.
+    # nearly all recursion in the constructor.
     # TODO: Make Index(arrays) or Index(tuples) return MI (maybe allow
     # ObjectIndex to handle??)
     def __call__(cls, data=None, *args, **kwargs):
-        print(cls, data, args, kwargs)
-        # TODO: Pass fastpaths where possible... (i.e., self._data = data,
-        # self.names = names)
-
         # this too slow? Probably fine right?
         if 'levels' in kwargs or 'labels' in kwargs:
             cls = MultiIndex
@@ -169,7 +165,6 @@ class IndexMeta(type):
                 if dtype is not None and dtype == _o_dtype:
                     # TODO: Make this an ObjectIndex instead.
                     cls = ObjectIndex
-                    args = []
                     kwargs = dict(fastpath=True, names=names)
                     subarr = result.to_pydatetime()
                 else:
@@ -177,7 +172,6 @@ class IndexMeta(type):
             elif issubclass(data.dtype.type, np.timedelta64):
                 # don't want to pass dtype at this point here...
                 cls = Int64Index
-                args = []
                 subarr = data
                 # fastpath = True??
                 kwargs = dict(names=names, copy=copy)
@@ -190,14 +184,11 @@ class IndexMeta(type):
             elif isinstance(data, PeriodIndex):
                 cls = PeriodIndex
                 subarr = data
-                # args = []
                 kwargs.pop('dtype', None)
 
             elif issubclass(data.dtype.type, np.integer):
                 cls = Int64Index
                 subarr = data
-                # args = []
-                # TODO: get names here...
                 kwargs = dict(copy=copy, dtype=dtype,
                               names=names)
             else:
