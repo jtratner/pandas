@@ -491,7 +491,7 @@ class DatetimeIndex(Int64Index):
 
             arr = tools.to_datetime(list(xdr), box=False)
 
-            cachedRange = DatetimeIndex(arr, offset=offset, tz=None, name=None)
+            cachedRange = DatetimeIndex(arr, freq=offset, tz=None, name=None)
             drc[offset] = cachedRange
         else:
             cachedRange = drc[offset]
