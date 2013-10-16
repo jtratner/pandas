@@ -2546,6 +2546,9 @@ class MultiIndex(Index):
 
     @property
     def values(self):
+        if self._tuples is not None:
+            return self._tuples
+
         values = []
         for lev, lab in zip(self.levels, self.labels):
             taken = com.take_1d(lev.values, lab)
