@@ -1439,7 +1439,7 @@ class DatetimeIndex(Int64Index):
         """
         Returns numpy array of datetime.date. The date part of the Timestamps.
         """
-        return _algos.arrmap_object(self.asobject, lambda x: x.date())
+        return _algos.arrmap_object(self.asobject._values_no_copy, lambda x: x.date())
 
 
     def normalize(self):

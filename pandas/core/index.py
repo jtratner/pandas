@@ -344,10 +344,13 @@ class Index(PandasObject):
     __len__ = _delegate_to_ndarray_property('__len__')
     size = _delegate_to_ndarray_property('size')
     shape = _delegate_to_ndarray_property('shape')
+
     searchsorted = _delegate_to_ndarray_method('searchsorted')
     ravel = _delegate_to_ndarray_method('ravel')
+    argmin = _delegate_to_ndarray_method('argmin')
+    argmax = _delegate_to_ndarray_method('argmax')
+    # TODO: This is apparently supposed to return something different for MI??
     repeat = _delegate_to_ndarray_method('repeat')
-
 
     def __reduce__(self):
         kwargs = tuple((attr, getattr(self, attr)) for attr in self._metadata)
