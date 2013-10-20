@@ -117,7 +117,7 @@ cdef class IndexEngine:
             return arr[loc]
         # TODO: Probably should either remove this check / figure out if it's
         # necessary
-        elif isinstance(loc, Index):
+        elif hasattr(loc, '_values_no_copy'):
             return arr[loc._values_no_copy]
         else:
             if arr.descr.type_num == NPY_DATETIME:
@@ -138,7 +138,7 @@ cdef class IndexEngine:
 
         if PySlice_Check(loc) or cnp.PyArray_Check(loc):
             arr[loc] = value
-        elif isinstance(loc, Index):
+        elif hasattr(loc, '_values_no_copy'):
             arr[loc._values_no_copy] = value
         else:
             util.set_value_at(arr, loc, value)
