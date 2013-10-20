@@ -769,7 +769,7 @@ def clean_index_list(list obj):
     converted = np.empty(n, dtype=object)
     for i in range(n):
         v = obj[i]
-        if PyList_Check(v) or np.PyArray_Check(v):
+        if PyList_Check(v) or np.PyArray_Check(v) or isinstance(v, Index):
             converted[i] = tuple(v)
         else:
             converted[i] = v

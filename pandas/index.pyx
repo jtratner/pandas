@@ -115,6 +115,10 @@ cdef class IndexEngine:
         loc = self.get_loc(key)
         if PySlice_Check(loc) or cnp.PyArray_Check(loc):
             return arr[loc]
+        # TODO: Probably should either remove this check / figure out if it's
+        # necessary
+        elif isinstance(loc, Index):
+            return arr[loc._values_no_copy]
         else:
             if arr.descr.type_num == NPY_DATETIME:
                 return Timestamp(util.get_value_at(arr, loc))
@@ -131,8 +135,11 @@ cdef class IndexEngine:
         loc = self.get_loc(key)
         value = convert_scalar(arr, value)
 
+
         if PySlice_Check(loc) or cnp.PyArray_Check(loc):
             arr[loc] = value
+        elif isinstance(loc, Index):
+            arr[loc._values_no_copy] = value
         else:
             util.set_value_at(arr, loc, value)
 
