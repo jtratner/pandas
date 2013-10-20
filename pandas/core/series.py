@@ -568,6 +568,8 @@ class Series(generic.NDFrame):
         return self._constructor(self.values[indexer], index=new_index, name=self.name)
 
     def _get_values(self, indexer):
+        if isinstance(indexer, Index):
+            indexer = indexer._values_no_copy
         try:
             return self._constructor(self._data.get_slice(indexer),
                                      name=self.name, fastpath=True)
