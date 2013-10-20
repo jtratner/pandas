@@ -52,10 +52,16 @@ def _field_accessor(name, field):
 def _join_i8_wrapper(joinf, with_indexers=True):
     @staticmethod
     def wrapper(left, right):
-        if isinstance(left, (np.ndarray, Index)):
+        if isinstance(left, Index):
+            left = left._values_no_copy.view('i8')
+        elif isinstance(left, np.ndarray):
             left = left.view('i8', type=np.ndarray)
-        if isinstance(right, (np.ndarray, Index)):
+
+        if isinstance(right, Index):
+            right = right._values_no_copy.view('i8')
+        elif isinstance(right, np.ndarray):
             right = right.view('i8', type=np.ndarray)
+
         results = joinf(left, right)
         if with_indexers:
             join_index, left_indexer, right_indexer = results
@@ -70,6 +76,7 @@ def _dt_index_cmp(opname):
     Wrap comparison operations to convert datetime-like to datetime64
     """
     def wrapper(self, other):
+        # will return an *ndarray*
         func = getattr(super(DatetimeIndex, self), opname)
         if isinstance(other, datetime):
             other = _to_m8(other, tz=self.tz)
@@ -81,7 +88,9 @@ def _dt_index_cmp(opname):
             other = _ensure_datetime64(other)
         result = func(other)
 
-        return result.view(np.ndarray)
+        if isinstance(result, Index):
+            result = result._values_no_copy
+        return result
 
     return wrapper
 
@@ -1423,7 +1432,7 @@ class DatetimeIndex(Int64Index):
         """
         # can't call self.map() which tries to treat func as ufunc
         # and causes recursion warnings on python 2.6
-        return _algos.arrmap_object(self.asobject, lambda x: x.time())
+        return _algos.arrmap_object(self.asobject._values_no_copy, lambda x: x.time())
 
     @property
     def date(self):
