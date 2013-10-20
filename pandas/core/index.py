@@ -342,6 +342,7 @@ class Index(PandasObject):
 
     dtype = _delegate_to_ndarray_property('dtype')
     __len__ = _delegate_to_ndarray_property('__len__')
+    size = _delegate_to_ndarray_property('size')
     shape = _delegate_to_ndarray_property('shape')
     searchsorted = _delegate_to_ndarray_method('searchsorted')
     ravel = _delegate_to_ndarray_method('ravel')
