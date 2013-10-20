@@ -1651,6 +1651,26 @@ class TestMultiIndex(unittest.TestCase):
         assert_almost_equal(res, exp)
         assert_almost_equal(exp, exp2)
 
+    def test_legacy_v2_unpickle(self):
+        # 0.7.3 -> 0.8.0 format manage
+        pth, _ = os.path.split(os.path.abspath(__file__))
+        filepath = os.path.join(pth, 'data', 'mindex_073.pickle')
+
+        obj = pd.read_pickle(filepath)
+
+        obj2 = MultiIndex.from_tuples(obj.values)
+        self.assert_(obj.equals(obj2))
+
+        res = obj.get_indexer(obj)
+        exp = np.arange(len(obj))
+        assert_almost_equal(res, exp)
+
+        res = obj.get_indexer(obj2[::-1])
+        exp = obj.get_indexer(obj[::-1])
+        exp2 = obj2.get_indexer(obj2[::-1])
+        assert_almost_equal(res, exp)
+        assert_almost_equal(exp, exp2)
+
     def test_from_tuples_index_values(self):
         result = MultiIndex.from_tuples(self.index)
         self.assert_((result.values == self.index.values).all())
