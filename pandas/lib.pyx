@@ -753,10 +753,13 @@ def clean_index_list(list obj):
         Py_ssize_t i, n = len(obj)
         object v
         bint all_arrays = 1
+    # hackaround - probably need to define Index as an extension class instead...
+    from pandas import Index
 
     for i in range(n):
         v = obj[i]
-        if not (PyList_Check(v) or np.PyArray_Check(v)):
+        # hackaround - probably need to define Index as an extension class instead...
+        if not (PyList_Check(v) or np.PyArray_Check(v) or isinstance(v, Index)):
             all_arrays = 0
             break
 
