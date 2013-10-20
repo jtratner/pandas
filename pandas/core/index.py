@@ -352,6 +352,8 @@ class Index(PandasObject):
     # TODO: This is apparently supposed to return something different for MI??
     repeat = _delegate_to_ndarray_method('repeat')
 
+    # Required property - inferred_type
+
     def __reduce__(self):
         kwargs = tuple((attr, getattr(self, attr)) for attr in self._metadata)
         return (_unpickle, # callable
@@ -1946,6 +1948,12 @@ class ObjectIndex(Index):
     @property
     def asobject(self):
         return self
+
+    @cache_readonly(allow_setting=True)
+    def inferred_type(self):
+        # not sure if this should just *always* return 'object'
+        # asobject for the convenience of subclasses
+        return lib.infer_dtype(self.asobject._values_no_copy)
 
     def equals(self, other):
         """

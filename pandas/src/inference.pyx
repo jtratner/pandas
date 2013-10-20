@@ -36,6 +36,8 @@ def infer_dtype(object _values):
 
     if isinstance(_values, np.ndarray):
         values = _values
+    elif isinstance(_values, Index):
+        return _values.inferred_type
     else:
         if not isinstance(_values, list):
             _values = list(_values)
