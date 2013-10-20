@@ -2029,6 +2029,11 @@ class Int64Index(Index):
 
 
     @property
+    def asobject(self):
+        return ObjectIndex(self.values.astype('O'),
+                           fastpath=True).__finalize__(self)
+
+    @property
     def asi8(self):
         # do not cache or you'll create a memory leak
         return self.values.view('i8')
