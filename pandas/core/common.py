@@ -1896,7 +1896,10 @@ def is_bool(obj):
 
 
 def is_integer(obj):
-    return isinstance(obj, (numbers.Integral, np.integer))
+    try:
+        return obj == int(obj)
+    except:
+        return False
 
 
 def is_float(obj):
