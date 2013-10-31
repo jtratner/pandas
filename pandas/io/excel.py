@@ -357,7 +357,7 @@ class ExcelWriter(object):
     def __new__(cls, path, engine=None, **kwargs):
         # only need to infer if ExcelWriter (generic) class.
         if cls != ExcelWriter:
-            return object.__new__(cls)
+            return super(ExcelWriter, cls).__new__(path, engine=engine, **kwargs)
 
         if cls == ExcelWriter and not isinstance(getattr(cls, 'engine', None),
                                                  compat.string_types):
