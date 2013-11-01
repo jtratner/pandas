@@ -17,6 +17,7 @@ from pandas.core import config
 from pandas.core.common import pprint_thing
 import pandas.compat as compat
 import pandas.core.common as com
+import pandas.lib as lib
 from warnings import warn
 
 __all__ = ["read_excel", "ExcelWriter", "ExcelFile"]
@@ -241,48 +242,19 @@ class ExcelFile(object):
                      parse_dates=False, date_parser=None, na_values=None,
                      thousands=None, chunksize=None, convert_float=True,
                      **kwds):
-        from xlrd import (xldate_as_tuple, XL_CELL_DATE,
-                          XL_CELL_ERROR, XL_CELL_BOOLEAN,
-                          XL_CELL_NUMBER)
 
         datemode = self.book.datemode
         if isinstance(sheetname, compat.string_types):
             sheet = self.book.sheet_by_name(sheetname)
         else:  # assume an integer if not a string
             sheet = self.book.sheet_by_index(sheetname)
-
-        data = []
-        should_parse = {}
-        for i in range(sheet.nrows):
-            row = []
-            for j, (value, typ) in enumerate(zip(sheet.row_values(i),
-                                                 sheet.row_types(i))):
-                if parse_cols is not None and j not in should_parse:
-                    should_parse[j] = self._should_parse(j, parse_cols)
-
-                if parse_cols is None or should_parse[j]:
-                    if typ == XL_CELL_DATE:
-                        dt = xldate_as_tuple(value, datemode)
-                        # how to produce this first case?
-                        if dt[0] < datetime.MINYEAR:  # pragma: no cover
-                            value = datetime.time(*dt[3:])
-                        else:
-                            value = datetime.datetime(*dt)
-                    elif typ == XL_CELL_ERROR:
-                        value = np.nan
-                    elif typ == XL_CELL_BOOLEAN:
-                        value = bool(value)
-                    elif convert_float and typ == XL_CELL_NUMBER:
-                        # GH5394 - Excel 'numbers' are always floats
-                        # it's a minimal perf hit and less suprising
-                        val = int(value)
-                        if val == value:
-                            value = val
-
-                    row.append(value)
-
-            data.append(row)
-
+        data = lib.convert_excel_data(self, sheet, parse_cols=parse_cols,
+                                      convert_float=convert_float,
+                                      datemode=datemode)
+        # data = lib.convert_excel_data_vectorized(sheet, parse_cols=parse_cols,
+        #                               convert_float=convert_float,
+        #                               datemode=datemode)
+        # data = data.tolist()
         if header is not None:
             data[header] = _trim_excel_header(data[header])
 

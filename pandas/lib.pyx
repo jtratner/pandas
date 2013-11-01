@@ -30,6 +30,7 @@ from datetime import datetime as pydatetime
 
 # this is our tseries.pxd
 from datetime cimport *
+cimport datetime as cdatetime
 
 from tslib cimport convert_to_tsobject
 import tslib
@@ -1208,6 +1209,152 @@ def indices_fast(object index, ndarray[int64_t] labels, list keys,
     result[tup] = index[start:]
 
     return result
+
+def _excel2num(x):
+    "Convert Excel column name like 'AB' to 0-based column index"
+    return reduce(lambda s, a: s * 26 + ord(a) - ord('A') + 1,
+                  x.upper().strip(), 0) - 1
+
+def _range2cols(areas):
+    """
+    Convert comma separated list of column names and column ranges to a
+    list of 0-based column indexes.
+
+    >>> _range2cols('A:E')
+    [0, 1, 2, 3, 4]
+    >>> _range2cols('A,C,Z:AB')
+    [0, 2, 25, 26, 27]
+    """
+
+    cols = []
+    for rng in areas.split(','):
+        if ':' in rng:
+            rng = rng.split(':')
+            cols += list(range(_excel2num(rng[0]), _excel2num(rng[1]) + 1))
+        else:
+            cols.append(_excel2num(rng))
+    return cols
+
+def parse_cols_to_list(parse_cols):
+    import pandas.compat as compat
+    if isinstance(parse_cols, int):
+        return [parse_cols]
+    elif isinstance(parse_cols, compat.string_types):
+        return _range2cols(parse_cols)
+    else:
+        return list(parse_cols)
+
+def convert_excel_data(object reader, object sheet,
+                       object parse_cols, bint convert_float,
+                       object datemode):
+    cdef:
+        int n, i, j
+        int XL_CELL_ERROR, XL_CELL_DATE, XL_CELL_BOOLEAN, XL_CELL_NUMBER
+        int typ
+        bint try_parse_cols
+        tuple dt
+        set cols_to_parse = set()
+    import xlrd
+    from xlrd import xldate_as_tuple
+    XL_CELL_DATE = xlrd.XL_CELL_DATE
+    XL_CELL_ERROR = xlrd.XL_CELL_ERROR
+    XL_CELL_BOOLEAN = xlrd.XL_CELL_BOOLEAN
+    XL_CELL_NUMBER = xlrd.XL_CELL_NUMBER
+    n = sheet.nrows
+    data = []
+    should_parse = {}
+    try_parse_cols = parse_cols is not None
+    if try_parse_cols:
+        cols_to_parse = set(parse_cols_to_list(parse_cols))
+    for i in range(n):
+        row = []
+        row_vals = list(sheet.row_values(i))
+        row_types = list(sheet.row_types(i))
+        for j in range(len(row_types)):
+            value = row_vals[j]
+            typ = row_types[j]
+
+            if not try_parse_cols or j in cols_to_parse:
+                if typ == XL_CELL_DATE:
+                    dt = xldate_as_tuple(value, datemode)
+                    # how to produce this first case?
+                    if dt[0] < pydatetime.MINYEAR:  # pragma: no cover
+                        value = pydatetime.time(*dt[3:])
+                    else:
+                        value = pydatetime.datetime(*dt)
+                elif typ == XL_CELL_ERROR:
+                    value = np.nan
+                elif typ == XL_CELL_BOOLEAN:
+                    value = bool(value)
+                elif convert_float and typ == XL_CELL_NUMBER:
+                    # GH5394 - Excel 'numbers' are always floats
+                    # it's a minimal perf hit and less suprising
+                    val = int(value)
+                    if val == value:
+                        value = val
+
+                row.append(value)
+
+        data.append(row)
+    return data
+
+def convert_excel_data_vectorized(object sheet,
+                       object parse_cols, bint convert_float,
+                       object datemode):
+    cdef:
+        int n, i, j
+        int XL_CELL_ERROR, XL_CELL_DATE, XL_CELL_BOOLEAN, XL_CELL_NUMBER
+        int rows, cols
+        bint try_parse_cols
+        tuple dt
+        set cols_to_parse = set()
+        np.ndarray[int64_t, ndim=2] temp_types
+        np.ndarray[int64_t, ndim=1] types
+        np.ndarray[object, ndim=2] temp_values
+        np.ndarray[object, ndim=1] values
+    import xlrd
+    from xlrd import xldate_as_tuple
+    XL_CELL_DATE = xlrd.XL_CELL_DATE
+    XL_CELL_ERROR = xlrd.XL_CELL_ERROR
+    XL_CELL_BOOLEAN = xlrd.XL_CELL_BOOLEAN
+    XL_CELL_NUMBER = xlrd.XL_CELL_NUMBER
+    rows = sheet.nrows
+    try_parse_cols = parse_cols is not None
+    # TODO: Can this ever be ragged??
+    temp_types = np.array([list(sheet.row_types(i)) for i in range(rows)], dtype=np.int_)
+    temp_values = np.array([list(sheet.row_values(i)) for i in range(rows)], dtype=np.object_)
+
+    if try_parse_cols:
+        cols_to_parse = parse_cols_to_list(parse_cols)
+        temp_types = temp_types[:, cols_to_parse]
+        temp_values = temp_values[:, cols_to_parse]
+    s0 = temp_types.shape[0]
+    s1 = temp_types.shape[1]
+    types = temp_types.ravel()
+    values = temp_values.ravel()
+
+    nans = types == XL_CELL_ERROR
+    values[nans] = np.nan
+
+    bools = types == XL_CELL_BOOLEAN
+    values[bools] = values[bools].astype(bool)
+
+    dates = types == XL_CELL_DATE
+    for i in dates.nonzero()[0]:
+        value = values[i]
+        dt = xldate_as_tuple(value, datemode)
+        # minimum date in Excel is 1900...
+        values[i] = pydatetime.datetime(*dt)
+
+    # if convert_float:
+    #     poss_ints = types == XL_CELL_NUMBER
+    #     for i in poss_ints.nonzero()[0]:
+    #         value = values[i]
+    #         val = int(values[i])
+    #         if val == value:
+    #             values[i] = val
+
+    return values.reshape((s0, s1))
 
 include "reduce.pyx"
 include "properties.pyx"
