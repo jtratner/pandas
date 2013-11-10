@@ -12,7 +12,6 @@ from __future__ import division
 # pylint: disable=E1101,E1103
 # pylint: disable=W0212,W0231,W0703,W0622
 
-import sys
 import collections
 import warnings
 import types
