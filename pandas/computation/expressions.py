@@ -89,7 +89,7 @@ def _can_use_numexpr(op, op_str, a, b, dtype_check):
     return False
 
 
-def _evaluate_numexpr(op, op_str, a, b, raise_on_error=False, truediv=True,
+def _evaluate_numexpr(op, op_str, a, b, raise_on_error=False,
                       **eval_kwargs):
     result = None
 
@@ -100,8 +100,7 @@ def _evaluate_numexpr(op, op_str, a, b, raise_on_error=False, truediv=True,
             result = ne.evaluate('a_value %s b_value' % op_str,
                                  local_dict={'a_value': a_value,
                                              'b_value': b_value},
-                                 casting='safe', truediv=truediv,
-                                 **eval_kwargs)
+                                 casting='safe', **eval_kwargs)
         except ValueError as detail:
             if 'unknown type object' in str(detail):
                 pass
