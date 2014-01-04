@@ -1,3 +1,4 @@
+from __future__ import division
 """ manage PyTables query interface via Expressions """
 
 import ast

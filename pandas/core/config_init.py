@@ -1,3 +1,4 @@
+from __future__ import division
 """
 This module is imported from the pandas package __init__.py file
 in order to ensure that the core.config options registered here will

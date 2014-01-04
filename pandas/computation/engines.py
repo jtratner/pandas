@@ -1,3 +1,4 @@
+from __future__ import division
 """Engine classes for :func:`~pandas.eval`
 """
 

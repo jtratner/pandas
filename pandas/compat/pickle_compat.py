@@ -1,3 +1,4 @@
+from __future__ import division
 """ support pre 0.12 series pickle compatibility """
 
 import sys

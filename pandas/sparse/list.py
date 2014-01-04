@@ -1,3 +1,4 @@
+from __future__ import division
 import numpy as np
 from pandas.core.base import PandasObject
 from pandas.core.common import pprint_thing

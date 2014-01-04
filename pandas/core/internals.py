@@ -1,3 +1,4 @@
+from __future__ import division
 import itertools
 import re
 from datetime import datetime, timedelta

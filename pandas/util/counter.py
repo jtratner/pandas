@@ -1,3 +1,4 @@
+from __future__ import division
 # This is copied from collections in Python 2.7, for compatibility with older
 # versions of Python. It can be dropped when we depend on Python 2.7/3.1
 

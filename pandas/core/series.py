@@ -1,3 +1,4 @@
+from __future__ import division
 """
 Data structure for 1-dimensional cross-sectional and time series data
 """

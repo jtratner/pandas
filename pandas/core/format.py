@@ -1,3 +1,4 @@
+from __future__ import division
 #coding: utf-8
 from __future__ import print_function
 # pylint: disable=W0141

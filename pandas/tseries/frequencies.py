@@ -1,3 +1,4 @@
+from __future__ import division
 from datetime import datetime
 from pandas.compat import range, long, zip
 from pandas import compat

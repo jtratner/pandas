@@ -1,3 +1,4 @@
+from __future__ import division
 from datetime import date, datetime, timedelta
 from pandas.compat import range
 from pandas import compat

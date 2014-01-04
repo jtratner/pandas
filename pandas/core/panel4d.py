@@ -1,3 +1,4 @@
+from __future__ import division
 """ Panel4D: a 4-d dict like collection of panels """
 
 from pandas.core.panelnd import create_nd_panel_factory

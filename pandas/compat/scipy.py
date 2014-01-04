@@ -1,3 +1,4 @@
+from __future__ import division
 """
 Shipping functions from SciPy to reduce dependency on having SciPy installed
 """

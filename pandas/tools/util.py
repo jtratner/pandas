@@ -1,3 +1,4 @@
+from __future__ import division
 from pandas.core.index import Index
 import numpy as np
 

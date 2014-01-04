@@ -1,3 +1,4 @@
+from __future__ import division
 """
 Misc tools for implementing data structures
 """

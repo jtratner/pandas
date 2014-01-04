@@ -1,3 +1,4 @@
+from __future__ import division
 """
 SQL-style merge routines
 """

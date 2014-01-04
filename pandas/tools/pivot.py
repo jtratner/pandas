@@ -1,3 +1,4 @@
+from __future__ import division
 # pylint: disable=E1103
 
 from pandas import Series, DataFrame

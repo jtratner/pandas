@@ -1,3 +1,4 @@
+from __future__ import division
 import types
 from functools import wraps
 import numpy as np

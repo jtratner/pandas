@@ -1,3 +1,4 @@
+from __future__ import division
 """
 Contains data structures designed for manipulating panel (3-dimensional) data
 """

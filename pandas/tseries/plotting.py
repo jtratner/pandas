@@ -1,3 +1,4 @@
+from __future__ import division
 """
 Period formatters and locators adapted from scikits.timeseries by
 Pierre GF Gerard-Marchant & Matt Knox

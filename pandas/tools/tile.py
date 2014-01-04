@@ -1,3 +1,4 @@
+from __future__ import division
 """
 Quantilization functions and related stuff
 """

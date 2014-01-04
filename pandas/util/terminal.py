@@ -1,3 +1,4 @@
+from __future__ import division
 """
 get_terminal_size() -- return width and height of terminal as a tuple
 

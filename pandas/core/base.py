@@ -1,3 +1,4 @@
+from __future__ import division
 """
 Base and utility classes for pandas objects.
 """

@@ -1,3 +1,4 @@
+from __future__ import division
 # pylint: disable=W0231,E1101
 import warnings
 import operator

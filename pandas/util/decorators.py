@@ -1,3 +1,4 @@
+from __future__ import division
 from pandas.compat import StringIO, callable
 from pandas.lib import cache_readonly
 import sys

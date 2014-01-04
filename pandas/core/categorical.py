@@ -1,3 +1,4 @@
+from __future__ import division
 # pylint: disable=E1101,W0232
 
 import numpy as np

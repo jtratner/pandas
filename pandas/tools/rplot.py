@@ -1,3 +1,4 @@
+from __future__ import division
 import random
 from copy import deepcopy
 from pandas.core.common import _values_from_object

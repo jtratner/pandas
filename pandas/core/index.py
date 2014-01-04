@@ -1,3 +1,4 @@
+from __future__ import division
 # pylint: disable=E1101,E1103,W0232
 import datetime
 from functools import partial

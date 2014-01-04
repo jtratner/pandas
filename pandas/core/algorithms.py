@@ -1,3 +1,4 @@
+from __future__ import division
 """
 Generic data algorithms. This module is experimental at the moment and not
 intended for public consumption

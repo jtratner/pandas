@@ -1,3 +1,4 @@
+from __future__ import division
 # pylint: disable=W0611
 
 from pandas.sparse.array import SparseArray

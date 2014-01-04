@@ -1,3 +1,4 @@
+from __future__ import division
 # being a bit too dynamic
 # pylint: disable=E1101
 import datetime

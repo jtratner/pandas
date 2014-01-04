@@ -1,3 +1,4 @@
+from __future__ import division
 """
 Isolate pandas's exposure to NumPy
 """

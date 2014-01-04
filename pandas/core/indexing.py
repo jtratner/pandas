@@ -1,3 +1,4 @@
+from __future__ import division
 # pylint: disable=W0223
 
 from datetime import datetime

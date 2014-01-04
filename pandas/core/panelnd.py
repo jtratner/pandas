@@ -1,3 +1,4 @@
+from __future__ import division
 """ Factory methods to create N-D panels """
 
 import pandas.lib as lib

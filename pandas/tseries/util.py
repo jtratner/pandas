@@ -1,3 +1,4 @@
+from __future__ import division
 from pandas.compat import range, lrange
 import numpy as np
 

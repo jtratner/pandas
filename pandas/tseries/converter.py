@@ -1,3 +1,4 @@
+from __future__ import division
 from datetime import datetime, timedelta
 import datetime as pydt
 import numpy as np

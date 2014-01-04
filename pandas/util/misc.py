@@ -1,3 +1,4 @@
+from __future__ import division
 """ various miscellaneous utilities """
 
 def is_little_endian():

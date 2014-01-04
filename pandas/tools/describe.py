@@ -1,3 +1,4 @@
+from __future__ import division
 from pandas.core.series import Series
 
 
