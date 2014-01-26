@@ -16,7 +16,8 @@ from pandas.core import common as com
 from pandas import DataFrame, Series, Panel, date_range
 from pandas.util.testing import makeCustomDataframe as mkdf
 
-from pandas.computation import pytables, _USE_NUMEXPR
+from pandas.computation import pytables
+import pandas.computation as computation
 from pandas.computation.engines import _engines
 from pandas.computation.expr import PythonExprVisitor, PandasExprVisitor
 from pandas.computation.ops import (_binary_ops_dict, _unary_ops_dict,
@@ -35,7 +36,7 @@ _scalar_skip = 'in', 'not in'
 
 
 def skip_if_no_ne(engine='numexpr'):
-    if not _USE_NUMEXPR and engine == 'numexpr':
+    if not computation._USE_NUMEXPR and engine == 'numexpr':
         raise nose.SkipTest("numexpr engine not installed or disabled")
 
 
@@ -1344,7 +1345,7 @@ class TestOperationsNumExprPython(TestOperationsNumExprPandas):
     @classmethod
     def setUpClass(cls):
         super(TestOperationsNumExprPython, cls).setUpClass()
-        if not _USE_NUMEXPR:
+        if not computation._USE_NUMEXPR:
             raise nose.SkipTest("numexpr engine not installed")
         cls.engine = 'numexpr'
         cls.parser = 'python'
