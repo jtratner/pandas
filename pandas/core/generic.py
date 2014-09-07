@@ -1908,7 +1908,11 @@ class NDFrame(PandasObject):
         This allows simpler access to columns for interactive use.
         """
         if name in self._internal_names_set:
-            return object.__getattribute__(self, name)
+            try:
+                return object.__getattribute__(self, name)
+            except AttributeError:
+                raise AttributeError("'%s' object does not have indexer '%s'" %
+                                     (type(self).__name__, name))
         elif name in self._metadata:
             return object.__getattribute__(self, name)
         else:
