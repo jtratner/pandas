@@ -1040,7 +1040,7 @@ class _Openpyxl2Writer(_Openpyxl1Writer):
         number_format : openpyxl.styles.NumberFormat
         """
 
-        from openpyxl.styles.number import NumberFormat
+        from openpyxl.styles.numbers import NumberFormat
 
         return NumberFormat(**number_format_dict)
 
