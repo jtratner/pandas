@@ -7184,6 +7184,13 @@ class TestDataFrame(tm.TestCase, CheckIndexing,
         self.assertRaises(ValueError, self.frame.dropna, how='foo')
         self.assertRaises(TypeError, self.frame.dropna, how=None)
 
+    def test_dropna_subset_missing_columns(self):
+        df = DataFrame({'a': [1], 'b': [2], 'c': [np.nan]})
+        # should not drop anything because only column it is using does not
+        # exist.
+        actual = df.dropna(subset=['x'])
+        assert_frame_equal(df, actual)
+
     def test_dropna_multiple_axes(self):
         df = DataFrame([[1, np.nan, 2, 3],
                         [4, np.nan, 5, 6],

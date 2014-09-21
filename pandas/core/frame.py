@@ -2552,7 +2552,10 @@ class DataFrame(NDFrame):
             agg_obj = self
             if subset is not None:
                 ax = self._get_axis(agg_axis)
-                agg_obj = self.take(ax.get_indexer_for(subset),axis=agg_axis)
+                indexer = ax.get_indexer_for(subset)
+                # skip missing labels
+                indexer = indexer[indexer != -1]
+                agg_obj = self.take(indexer, axis=agg_axis)
 
             count = agg_obj.count(axis=agg_axis)
 
